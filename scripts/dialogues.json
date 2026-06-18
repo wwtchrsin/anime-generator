@@ -1,0 +1,64 @@
+[
+    {
+        "tag": "dialogue-1",
+        "lang": "ru",
+        "background": "outdoors",
+        "lines": [
+            {
+                "character": "masha",
+                "position": "left",
+                "image": "normal",
+                "text": "А ты знала что из вентилей NAND можно собрать любую логическую функцию?"
+            },
+            {
+                "character": "lena",
+                "position": "right",
+                "image": "giggle",
+                "text": "Нет"
+            },
+            {
+                "character": "masha",
+                "position": "left",
+                "image": "smile",
+                "text": "Ну это так"
+            },
+            {
+                "character": "lena",
+                "position": "right",
+                "image": "surprised",
+                "text": "Нихуя себе"
+            }
+        ]
+   },
+   {
+        "tag": "dialogue-2",
+        "lang": "ru",
+        "background": "outdoors",
+        "lines": [
+            {
+                "character": "masha",
+                "position": "left",
+                "image": "normal",
+                "text": "А ты знала что из вентилей NAND можно собрать любую логическую функцию?"
+            },
+            {
+                "character": "lena",
+                "position": "right",
+                "image": "smile",
+                "text": "Вообще то знала"
+            },
+            {
+                "character": "masha",
+                "position": "left",
+                "image": "surprised",
+                "text": "Вот как"
+            },
+            {
+                "character": "lena",
+                "position": "right",
+                "image": "giggle",
+                "text": "Ага. Иди давай отсюда"
+            }
+        ]
+   }
+ ]

@@ -1,0 +1,5 @@
+opentimelineio==0.18.1
+pillow==12.2.0
+piper-tts==1.4.2
+
+
