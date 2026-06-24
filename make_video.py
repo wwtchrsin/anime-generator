@@ -23,8 +23,8 @@ CHARACTER_SPRITE_DIR = Path("images") / "characters"
 BACKGROUND_DIR = Path("images") / "backgrounds"
 VIDEO_W, VIDEO_H = 1280, 720
 FPS = 24
-AUDIO_LEADING_GAP = 0.4
-AUDIO_TRAILING_GAP = 0.8
+AUDIO_DELAY = 0.4
+AUDIO_PAD = 0.8
 
 if OUTPUT_DIR.exists():
     shutil.rmtree(OUTPUT_DIR)
@@ -38,22 +38,21 @@ with open(str(SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
     DIALOGUES = json.load(f)
 
 DIALOG_BOX = {
-    "height":      180,
-    "margin":      30,
-    "padding":     20,
+    "height":      0.25,
+    "margin":      0.05,
+    "padding":     0.035,
     "bg_color":    (10, 10, 30, 200),
     "border_color": (180, 180, 255, 220),
-    "border_width": 2,
+    "border_width": 0.00275,
     "text_color":  (255, 255, 255),
-    "name_size":   28,
-    "text_size":   24,
-    "text_wrap":   55, 
+    "name_size":   0.0389,
+    "text_size":   0.0333,
 }
 
 SPRITE = {
     "height_ratio": 0.85,
-    "bottom_offset": 160,
-    "side_margin":  40,
+    "bottom_offset": 0,
+    "side_margin":  0.1,
 }
 
 
@@ -97,32 +96,64 @@ def paste_sprite(frame: Image.Image, sprite_path: Path, align: str) -> Image.Ima
         sprite = Image.open(sprite_path).convert("RGBA")
 
     # scaling
+    sprite_side_margin = int(SPRITE["side_margin"] * VIDEO_W)
+    sprite_bottom_offset = int(SPRITE["bottom_offset"] * VIDEO_H)
     target_h = int(VIDEO_H * SPRITE["height_ratio"])
     ratio = target_h / sprite.height
     target_w = int(sprite.width * ratio)
     sprite = sprite.resize((target_w, target_h), Image.LANCZOS)
 
     # positioning
-    y = VIDEO_H - target_h + SPRITE["bottom_offset"]
+    y = VIDEO_H - target_h + sprite_bottom_offset
     if align == "left":
-        x = SPRITE["side_margin"]
+        x = sprite_side_margin
     else:
-        x = VIDEO_W - target_w - SPRITE["side_margin"]
+        x = VIDEO_W - target_w - sprite_side_margin
 
     frame.paste(sprite, (x, y), sprite)
     return frame
 
 
+def auto_wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> str:
+    words = text.split()
+    lines = []
+    curr_line = ""
+    
+    for word in words:
+        upd_line = f"{curr_line} {word}".strip()
+        bbox = font.getbbox(upd_line)
+        width = bbox[2] - bbox[0]
+        
+        if width < max_width:
+            curr_line = upd_line
+        else:
+            if curr_line:
+                lines.append(curr_line)
+            curr_line = word
+        
+    if curr_line:
+        lines.append(curr_line)
+    
+    return "\n".join(lines)
+
+
 def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Image:
     """Рисует диалоговое окно с именем и текстом реплики."""
-    cfg = DIALOG_BOX
     char_cfg = CHARACTERS[character]
-
-    m   = cfg["margin"]
-    box_x = m
-    box_y = VIDEO_H - cfg["height"] - m
-    box_w = VIDEO_W - m * 2
-    box_h = cfg["height"]
+    short_side = min(VIDEO_W, VIDEO_H)
+    
+    dialog_margin = int(DIALOG_BOX["margin"] * short_side)
+    dialog_padding = int(DIALOG_BOX["padding"] * short_side)
+    dialog_height = int(DIALOG_BOX["height"] * VIDEO_H)
+    dialog_border_width = int(round(DIALOG_BOX["border_width"] * short_side))
+    dialog_name_size = int(round(DIALOG_BOX["name_size"] * short_side))
+    dialog_text_size = int(round(DIALOG_BOX["text_size"] * short_side))
+    
+    max_text_width = VIDEO_W - dialog_margin * 2 - dialog_padding * 2
+    box_x = dialog_margin
+    box_y = VIDEO_H - dialog_height - dialog_margin
+    box_w = VIDEO_W - dialog_margin * 2
+    box_h = dialog_height
 
     # creating background
     overlay = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
@@ -130,26 +161,26 @@ def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Imag
     draw.rounded_rectangle(
         [box_x, box_y, box_x + box_w, box_y + box_h],
         radius=12,
-        fill=cfg["bg_color"],
-        outline=cfg["border_color"],
-        width=cfg["border_width"],
+        fill=DIALOG_BOX["bg_color"],
+        outline=DIALOG_BOX["border_color"],
+        width=dialog_border_width,
     )
     frame = Image.alpha_composite(frame, overlay)
     
     draw = ImageDraw.Draw(frame)
-    font_name = load_font(cfg["name_size"])
-    font_text = load_font(cfg["text_size"])
+    font_name = load_font(dialog_name_size)
+    font_text = load_font(dialog_text_size)
 
-    px = box_x + cfg["padding"]
-    py = box_y + cfg["padding"]
+    px = box_x + dialog_padding
+    py = box_y + dialog_padding
 
     # character name
     draw.text((px, py), character, font=font_name, fill=tuple(char_cfg["name_color"]))
-    py += cfg["name_size"] + 8
+    py += dialog_name_size + 8
 
     # line text
-    wrapped = textwrap.fill(text, width=cfg["text_wrap"])
-    draw.text((px, py), wrapped, font=font_text, fill=cfg["text_color"])
+    wrapped = auto_wrap(text, font_text, max_text_width)
+    draw.text((px, py), wrapped, font=font_text, fill=DIALOG_BOX["text_color"])
 
     return frame
 
@@ -183,7 +214,7 @@ def generate_audio(line: dict, out_path: Path) -> float:
         str(out_path),
     ], capture_output=True, text=True)
     
-    return AUDIO_LEADING_GAP + float(result.stdout.strip()) + AUDIO_TRAILING_GAP
+    return AUDIO_DELAY + float(result.stdout.strip()) + AUDIO_PAD
 
 
 def make_frame(line: dict, bg: Image.Image) -> Image.Image:
@@ -209,6 +240,7 @@ def render_scene(idx: int, line: dict, bg: Image.Image, audio_path: Path,
         "-loop", "1",
         "-i", str(frame_path),
         "-i", str(audio_path),
+        "-af", f"adelay={int(AUDIO_DELAY*1000)}|{int(AUDIO_DELAY*1000)},apad=pad_dur={AUDIO_PAD}",
         "-c:v", "libx264",
         "-tune", "stillimage",
         "-c:a", "aac",

@@ -21,8 +21,8 @@ CHARACTER_SPRITE_DIR = Path("images") / "characters"
 BACKGROUND_DIR = Path("images") / "backgrounds"
 VIDEO_W, VIDEO_H = 1280, 720
 FPS = 24
-AUDIO_LEADING_GAP = 0.4
-AUDIO_TRAILING_GAP = 0.8
+AUDIO_DELAY = 0.4
+AUDIO_PAD = 0.8
 
 if OUTPUT_DIR.exists():
     shutil.rmtree(OUTPUT_DIR)
@@ -36,22 +36,21 @@ with open(str(SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
     DIALOGUES = json.load(f)
 
 DIALOG_BOX = {
-    "height": 180,
-    "margin": 30,
-    "padding": 20,
-    "bg_color": (10, 10, 30, 200),
+    "height":      0.25,
+    "margin":      0.05,
+    "padding":     0.035,
+    "bg_color":    (10, 10, 30, 200),
     "border_color": (180, 180, 255, 220),
-    "border_width": 2,
-    "text_color": (255, 255, 255),
-    "name_size": 28,
-    "text_size": 24,
-    "text_wrap": 55,
+    "border_width": 0.00275,
+    "text_color":  (255, 255, 255),
+    "name_size":   0.0389,
+    "text_size":   0.0333,
 }
 
 SPRITE = {
     "height_ratio": 0.85,
-    "bottom_margin": 0,
-    "side_margin": 120,
+    "bottom_offset": 0,
+    "side_margin":  0.1,
 }
 
 def rt(frames: float) -> otio.opentime.RationalTime:
@@ -89,44 +88,78 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
 
 
 def generate_dialogbox_png(root_dir: Path) -> Path:
-    cfg = DIALOG_BOX
     img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    m = cfg["margin"]
+    
+    short_side = min(VIDEO_W, VIDEO_H)
+    dialog_margin = int(DIALOG_BOX["margin"] * short_side)
+    dialog_padding = int(DIALOG_BOX["padding"] * short_side)
+    dialog_height = int(DIALOG_BOX["height"] * VIDEO_H)
+    dialog_border_width = int(round(DIALOG_BOX["border_width"] * short_side))
+    
     draw.rounded_rectangle(
-        [m, VIDEO_H - cfg["height"] - m,
-         VIDEO_W - m, VIDEO_H - m],
+        [dialog_margin, VIDEO_H - dialog_height - dialog_margin,
+         VIDEO_W - dialog_margin, VIDEO_H - dialog_margin],
         radius=12,
-        fill=cfg["bg_color"],
-        outline=cfg["border_color"],
-        width=cfg["border_width"],
+        fill=DIALOG_BOX["bg_color"],
+        outline=DIALOG_BOX["border_color"],
+        width=dialog_border_width,
     )
     path = root_dir / "images" / "dialogbox.png"
     img.save(str(path))
     return path
+    
 
+def auto_wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> str:
+    words = text.split()
+    lines = []
+    curr_line = ""
+    
+    for word in words:
+        upd_line = f"{curr_line} {word}".strip()
+        bbox = font.getbbox(upd_line)
+        width = bbox[2] - bbox[0]
+        
+        if width < max_width:
+            curr_line = upd_line
+        else:
+            if curr_line:
+                lines.append(curr_line)
+            curr_line = word
+        
+    if curr_line:
+        lines.append(curr_line)
+    
+    return "\n".join(lines)
 
 def generate_text_png(root_dir: Path, idx: int, line: dict) -> Path:
-    cfg = DIALOG_BOX
     char_cfg = CHARACTERS[line['character']]
+    short_side = min(VIDEO_W, VIDEO_H)
+    
+    dialog_margin = int(DIALOG_BOX["margin"] * short_side)
+    dialog_padding = int(DIALOG_BOX["padding"] * short_side)
+    dialog_height = int(DIALOG_BOX["height"] * VIDEO_H)
+    dialog_name_size = int(round(DIALOG_BOX["name_size"] * short_side))
+    dialog_text_size = int(round(DIALOG_BOX["text_size"] * short_side))
+    
+    max_text_width = VIDEO_W - dialog_margin * 2 - dialog_padding * 2
 
     img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    font_name = load_font(cfg["name_size"])
-    font_text = load_font(cfg["text_size"])
+    font_name = load_font(dialog_name_size)
+    font_text = load_font(dialog_text_size)
 
-    m  = cfg["margin"]
-    px = m + cfg["padding"]
-    py = VIDEO_H - cfg["height"] - m + cfg["padding"]
+    px = dialog_margin + dialog_padding
+    py = VIDEO_H - dialog_height - dialog_margin + dialog_padding
 
     # character name
     draw.text((px, py), char_cfg['name'], font=font_name, fill=tuple(char_cfg["name_color"]))
-    py += cfg["name_size"] + 8
+    py += dialog_name_size + 8
 
     # character line
-    wrapped = textwrap.fill(line['text'], width=cfg["text_wrap"])
-    draw.text((px, py), wrapped, font=font_text, fill=cfg["text_color"])
+    wrapped = auto_wrap(line['text'], font_text, max_text_width)
+    draw.text((px, py), wrapped, font=font_text, fill=DIALOG_BOX["text_color"])
 
     path = root_dir / "images" / f"text_{idx:03d}_{line['character']}.png"
     img.save(str(path))
@@ -162,7 +195,7 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
         str(wav_path),
     ], capture_output=True, text=True)
     
-    duration_sec = AUDIO_LEADING_GAP + float(result.stdout.strip()) + AUDIO_TRAILING_GAP
+    duration_sec = AUDIO_DELAY + float(result.stdout.strip()) + AUDIO_PAD
     duration_frames = duration_sec * FPS
 
     return wav_path, duration_frames
@@ -177,16 +210,19 @@ def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
     img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
     
     sprite_image = Image.open(sprite_src).convert("RGBA")
+    
+    sprite_side_margin = int(SPRITE["side_margin"] * VIDEO_W)
+    sprite_bottom_offset = int(SPRITE["bottom_offset"] * VIDEO_H)
     target_h = int(VIDEO_H * SPRITE["height_ratio"])
     ratio = target_h / sprite_image.height
     target_w = int(sprite_image.width * ratio)
     sprite_image = sprite_image.resize((target_w, target_h), Image.LANCZOS)
     
-    y = VIDEO_H - target_h - SPRITE["bottom_margin"]
+    y = VIDEO_H - target_h - sprite_bottom_offset
     if pos == "left":
-        x = SPRITE["side_margin"]
+        x = sprite_side_margin
     elif pos == "right":
-        x = VIDEO_W - target_w - SPRITE["side_margin"]
+        x = VIDEO_W - target_w - sprite_side_margin
     else:
         x = int((VIDEO_W - target_w) * 0.5)
         
@@ -242,7 +278,7 @@ def build_timeline(dtag: str, scenes: list[dict], bg: str, lang: str) -> otio.sc
     tracks.append(v4)
 
     # A1: audio
-    audio_gap_frames = AUDIO_LEADING_GAP * FPS
+    audio_gap_frames = AUDIO_DELAY * FPS
     a1 = otio.schema.Track(name="dialogue", kind=otio.schema.TrackKind.Audio)
     for i, s in enumerate(scenes):
         a1.append(make_gap(audio_gap_frames))
