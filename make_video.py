@@ -17,44 +17,37 @@ VOICES = {
     "irina": PiperVoice.load("piper-voices/irina/ru_RU-irina-medium.onnx")
 }
 
+SETTINGS_DIR = Path("settings")
 SCRIPT_DIR = Path("scripts")
 OUTPUT_DIR = Path("video-output")
 CHARACTER_SPRITE_DIR = Path("images") / "characters"
 BACKGROUND_DIR = Path("images") / "backgrounds"
-VIDEO_W, VIDEO_H = 1280, 720
-FPS = 24
-AUDIO_DELAY = 0.4
-AUDIO_PAD = 0.8
 
 if OUTPUT_DIR.exists():
     shutil.rmtree(OUTPUT_DIR)
     
 os.mkdir(OUTPUT_DIR)
 
+with open(str(SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
+    SETTINGS = json.load(f)
+    
+with open(str(SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
+    DIALOG_BOX = json.load(f)
+    
+with open(str(SETTINGS_DIR / "sprite.json"), encoding="utf-8") as f:
+    SPRITE = json.load(f)
+
 with open(str(SCRIPT_DIR / "characters.json"), encoding="utf-8") as f:
     CHARACTERS = json.load(f)
     
 with open(str(SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
     DIALOGUES = json.load(f)
-
-DIALOG_BOX = {
-    "height":      0.25,
-    "margin":      0.05,
-    "padding":     0.035,
-    "bg_color":    (10, 10, 30, 200),
-    "border_color": (180, 180, 255, 220),
-    "border_width": 0.00275,
-    "text_color":  (255, 255, 255),
-    "name_size":   0.0389,
-    "text_size":   0.0333,
-}
-
-SPRITE = {
-    "height_ratio": 0.85,
-    "bottom_offset": 0,
-    "side_margin":  0.1,
-}
-
+    
+VIDEO_W = SETTINGS["video_width"]
+VIDEO_H = SETTINGS["video_height"]
+FPS = SETTINGS["fps"]
+AUDIO_DELAY = SETTINGS["audio_delay"]
+AUDIO_PAD = SETTINGS["audio_pad"]
 
 def load_font(size: int) -> ImageFont.FreeTypeFont:
     """Загружает системный шрифт с поддержкой кириллицы."""
@@ -161,8 +154,8 @@ def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Imag
     draw.rounded_rectangle(
         [box_x, box_y, box_x + box_w, box_y + box_h],
         radius=12,
-        fill=DIALOG_BOX["bg_color"],
-        outline=DIALOG_BOX["border_color"],
+        fill=tuple(DIALOG_BOX["bg_color"]),
+        outline=tuple(DIALOG_BOX["border_color"]),
         width=dialog_border_width,
     )
     frame = Image.alpha_composite(frame, overlay)
@@ -180,7 +173,7 @@ def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Imag
 
     # line text
     wrapped = auto_wrap(text, font_text, max_text_width)
-    draw.text((px, py), wrapped, font=font_text, fill=DIALOG_BOX["text_color"])
+    draw.text((px, py), wrapped, font=font_text, fill=tuple(DIALOG_BOX["text_color"]))
 
     return frame
 

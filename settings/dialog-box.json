@@ -1,0 +1,11 @@
+{
+    "height": 0.25,
+    "margin": 0.05,
+    "padding": 0.035,
+    "bg_color": [10, 10, 30, 200],
+    "border_color": [180, 180, 255, 220],
+    "border_width": 0.00275,
+    "text_color": [255, 255, 255],
+    "name_size": 0.0389,
+    "text_size": 0.0333
+}
