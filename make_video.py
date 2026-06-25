@@ -45,12 +45,12 @@ with open(str(SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
     
 VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
+VIDEO_AR = VIDEO_W / VIDEO_H
 FPS = SETTINGS["fps"]
 AUDIO_DELAY = SETTINGS["audio_delay"]
 AUDIO_PAD = SETTINGS["audio_pad"]
 
 def load_font(size: int) -> ImageFont.FreeTypeFont:
-    """Загружает системный шрифт с поддержкой кириллицы."""
     candidates = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
@@ -63,7 +63,6 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
 
 
 def make_background(bg_path: Path) -> Image.Image:
-    """Загружает и масштабирует фон до размера видео."""
     if bg_path.exists():
         img = Image.open(bg_path).convert("RGBA")
     else:
@@ -75,11 +74,28 @@ def make_background(bg_path: Path) -> Image.Image:
             g = int(20 + y / VIDEO_H * 20)
             b = int(50 + y / VIDEO_H * 60)
             draw.line([(0, y), (VIDEO_W, y)], fill=(r, g, b, 255))
-    return img.resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
+    
+    image_ar = img.width / img.height
+    if image_ar > VIDEO_AR:
+        temp_height = img.height
+        temp_width = img.height * VIDEO_AR
+        left = (img.width - temp_width) // 2
+        top = 0
+        right = temp_width + left
+        bottom = temp_height
+    else:
+        temp_width = img.width
+        temp_height = img.width / VIDEO_AR
+        left = 0
+        top = (img.height - temp_height) // 2
+        right = temp_width
+        bottom = temp_height + top
+        
+    cropped_img = img.crop((left, top, right, bottom))
+    return cropped_img.resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
 
 
 def paste_sprite(frame: Image.Image, sprite_path: Path, align: str) -> Image.Image:
-    """Накладывает PNG спрайт персонажа на кадр."""
     if not sprite_path.exists():
         # fallback
         sprite = Image.new("RGBA", (200, 400), (200, 150, 150, 180))
@@ -91,7 +107,7 @@ def paste_sprite(frame: Image.Image, sprite_path: Path, align: str) -> Image.Ima
     # scaling
     sprite_side_margin = int(SPRITE["side_margin"] * VIDEO_W)
     sprite_bottom_offset = int(SPRITE["bottom_offset"] * VIDEO_H)
-    target_h = int(VIDEO_H * SPRITE["height_ratio"])
+    target_h = int(VIDEO_H * SPRITE["max_height"])
     ratio = target_h / sprite.height
     target_w = int(sprite.width * ratio)
     sprite = sprite.resize((target_w, target_h), Image.LANCZOS)
@@ -131,7 +147,6 @@ def auto_wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> str:
 
 
 def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Image:
-    """Рисует диалоговое окно с именем и текстом реплики."""
     char_cfg = CHARACTERS[character]
     short_side = min(VIDEO_W, VIDEO_H)
     
@@ -211,7 +226,6 @@ def generate_audio(line: dict, out_path: Path) -> float:
 
 
 def make_frame(line: dict, bg: Image.Image) -> Image.Image:
-    """Собирает один кадр: фон + спрайт + диалоговое окно."""
     frame = bg.copy()
     char_cfg = CHARACTERS[line['character']]
     image_path = CHARACTER_SPRITE_DIR / f"{line['character']}-{line['image']}.png"
@@ -223,7 +237,7 @@ def make_frame(line: dict, bg: Image.Image) -> Image.Image:
 def render_scene(idx: int, line: dict, bg: Image.Image, audio_path: Path, 
                duration: float,
                scene_path: Path):
-    """Рендерит одну сцену (статичный кадр + аудио) в MP4."""
+    
     frame = make_frame(line, bg)
     frame_path = OUTPUT_DIR / f"frame_{idx:03d}.png"
     frame.convert("RGB").save(str(frame_path))
@@ -248,7 +262,6 @@ def render_scene(idx: int, line: dict, bg: Image.Image, audio_path: Path,
 
 
 def concat_scenes(scene_paths: list[Path], output_path: Path):
-    """Склеивает все сцены в один финальный файл."""
     list_file = OUTPUT_DIR / "concat_list.txt"
     with open(list_file, "w") as f:
         for p in scene_paths:
@@ -269,7 +282,7 @@ def concat_scenes(scene_paths: list[Path], output_path: Path):
 def main():
     for dialogue_index, dialogue in enumerate(DIALOGUES):
         print(f"\n[*] Creating dialogue {dialogue_index+1}/{len(DIALOGUES)} ({dialogue['tag']})...\n")
-        bg = make_background(BACKGROUND_DIR / f"{dialogue['background']}.jpg")
+        bg = make_background(BACKGROUND_DIR / f"{dialogue['background']}.png")
 
         scene_paths = []
 

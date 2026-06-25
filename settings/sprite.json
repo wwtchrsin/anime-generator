@@ -1,5 +1,5 @@
 {
-    "height_ratio": 0.85,
+    "max_height": 0.7,
     "bottom_offset": 0,
-    "side_margin": 0.1
+    "side_margin": 0
 }

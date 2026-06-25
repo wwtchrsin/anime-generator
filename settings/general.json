@@ -1,6 +1,6 @@
 {
-	"video_width": 1280,
-	"video_height": 720,
+	"video_width": 720,
+	"video_height": 1280,
 	"fps": 24,
 	"audio_delay": 0.4,
 	"audio_pad": 0.8

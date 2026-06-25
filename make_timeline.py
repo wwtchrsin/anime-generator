@@ -43,6 +43,7 @@ with open(str(SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
 
 VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
+VIDEO_AR = VIDEO_W / VIDEO_H
 FPS = SETTINGS["fps"]
 AUDIO_DELAY = SETTINGS["audio_delay"]
 AUDIO_PAD = SETTINGS["audio_pad"]
@@ -207,7 +208,7 @@ def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
     
     sprite_side_margin = int(SPRITE["side_margin"] * VIDEO_W)
     sprite_bottom_offset = int(SPRITE["bottom_offset"] * VIDEO_H)
-    target_h = int(VIDEO_H * SPRITE["height_ratio"])
+    target_h = int(VIDEO_H * SPRITE["max_height"])
     ratio = target_h / sprite_image.height
     target_w = int(sprite_image.width * ratio)
     sprite_image = sprite_image.resize((target_w, target_h), Image.LANCZOS)
@@ -224,8 +225,48 @@ def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
     img.save(str(sprite_path))
     
     return sprite_path
+    
+def make_background(root_dir: Path, bgTag: str) -> Path:
+    bg_src = BACKGROUND_DIR / f"{bgTag}.png"
+    print(bg_src)
+    bg_path = root_dir / "images" / f"background-{bgTag}.png"
+    
+    if bg_src.exists():
+        img = Image.open(bg_src).convert("RGBA")
+    else:
+        # fallback
+        img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (30, 30, 60, 255))
+        draw = ImageDraw.Draw(img)
+        for y in range(VIDEO_H):
+            r = int(20 + y / VIDEO_H * 30)
+            g = int(20 + y / VIDEO_H * 20)
+            b = int(50 + y / VIDEO_H * 60)
+            draw.line([(0, y), (VIDEO_W, y)], fill=(r, g, b, 255))
+    
+    image_ar = img.width / img.height
+    if image_ar > VIDEO_AR:
+        temp_height = img.height
+        temp_width = img.height * VIDEO_AR
+        left = (img.width - temp_width) // 2
+        top = 0
+        right = temp_width + left
+        bottom = temp_height
+    else:
+        temp_width = img.width
+        temp_height = img.width / VIDEO_AR
+        left = 0
+        top = (img.height - temp_height) // 2
+        right = temp_width
+        bottom = temp_height + top
+        
+    cropped_img = img.crop((left, top, right, bottom))
+    resized_img = cropped_img.resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
+    resized_img.save(str(bg_path))
+    
+    return bg_path
+    
       
-def build_timeline(dtag: str, scenes: list[dict], bg: str, lang: str) -> otio.schema.Timeline:
+def build_timeline(dtag: str, scenes: list[dict], bg_path: Path, dialog_path: Path, lang: str) -> otio.schema.Timeline:
     """
     Tracks
       V1  background
@@ -237,14 +278,7 @@ def build_timeline(dtag: str, scenes: list[dict], bg: str, lang: str) -> otio.sc
     
     timeline = otio.schema.Timeline(name=dtag)
     tracks = timeline.tracks
-
-    root_dir = OUTPUT_DIR / dtag
     total_frames = sum(s["frames"] for s in scenes)
-    bg_src = BACKGROUND_DIR / f"{bg}.jpg"
-    bg_path = root_dir / "images" / f"background-{bg}.jpg"
-    shutil.copyfile(bg_src, bg_path)
-    
-    dialogbox_path = generate_dialogbox_png(root_dir)
 
     # V1: background
     v1 = otio.schema.Track(name="background", kind=otio.schema.TrackKind.Video)
@@ -262,7 +296,7 @@ def build_timeline(dtag: str, scenes: list[dict], bg: str, lang: str) -> otio.sc
 
     # V3: dialog box
     v3 = otio.schema.Track(name="dialogbox", kind=otio.schema.TrackKind.Video)
-    v3.append(make_clip("dialogbox", dialogbox_path, total_frames))
+    v3.append(make_clip("dialogbox", dialog_path, total_frames))
     tracks.append(v3)
 
     #V4: text
@@ -290,6 +324,9 @@ def main():
         os.mkdir(root_dir / "images")
         os.mkdir(root_dir / "audio")
         
+        bg_path = make_background(root_dir, dialogue['background'])
+        dialog_path = generate_dialogbox_png(root_dir)
+        
         scenes = []
 
         for idx, line in enumerate(dialogue['lines']):
@@ -311,7 +348,7 @@ def main():
             print(f"    {frames/FPS:.1f}s  ({int(frames)} frames)")
 
         print("  Assembling timeline...")
-        timeline = build_timeline(dialogue['tag'], scenes, bg=dialogue['background'], lang=dialogue['lang'])
+        timeline = build_timeline(dialogue['tag'], scenes, bg_path=bg_path, dialog_path=dialog_path, lang=dialogue['lang'])
 
         otio_path = root_dir / f"{dialogue['tag']}.otio"
         otio.adapters.write_to_file(timeline, str(otio_path))
