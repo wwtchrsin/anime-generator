@@ -12,34 +12,67 @@ import wave
 import json
 
 VOICES = {
-    "irina": PiperVoice.load("piper-voices/irina/ru_RU-irina-medium.onnx")
+    "denis": PiperVoice.load("piper-voices/denis/ru_RU-denis-medium.onnx"),
+    "dmitri": PiperVoice.load("piper-voices/dmitri/ru_RU-dmitri-medium.onnx"),
+    "irina": PiperVoice.load("piper-voices/irina/ru_RU-irina-medium.onnx"),
+    "ruslan": PiperVoice.load("piper-voices/ruslan/ru_RU-ruslan-medium.onnx"),
 }
 
-SETTINGS_DIR = Path("settings")
-SCRIPT_DIR = Path("scripts")
-OUTPUT_DIR  = Path("timeline-output")
-CHARACTER_SPRITE_DIR = Path("images") / "characters"
-BACKGROUND_DIR = Path("images") / "backgrounds"
+PROJECT_DIR = Path("project")
+DEFAULT_SETTINGS_DIR = Path("settings")
+DEFAULT_SCRIPT_DIR = Path("scripts")
+SETTINGS_DIR = PROJECT_DIR / Path("settings")
+SCRIPT_DIR = PROJECT_DIR / Path("scripts")
+OUTPUT_DIR  = PROJECT_DIR / Path("timeline-output")
+
+DEFAULT_CHARACTER_SPRITE_DIR = Path("images") / "characters"
+DEFAULT_BACKGROUND_DIR = Path("images") / "backgrounds"
+CHARACTER_SPRITE_DIR = PROJECT_DIR / Path("images") / "characters"
+BACKGROUND_DIR = PROJECT_DIR / Path("images") / "backgrounds"
+
+if not PROJECT_DIR.exists():
+    os.mkdir(PROJECT_DIR)
 
 if OUTPUT_DIR.exists():
     shutil.rmtree(OUTPUT_DIR)
     
 os.mkdir(OUTPUT_DIR)
 
-with open(str(SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
     SETTINGS = json.load(f)
     
-with open(str(SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
     DIALOG_BOX = json.load(f)
     
-with open(str(SETTINGS_DIR / "sprite.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SETTINGS_DIR / "sprite.json"), encoding="utf-8") as f:
     SPRITE = json.load(f)
 
-with open(str(SCRIPT_DIR / "characters.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SCRIPT_DIR / "characters.json"), encoding="utf-8") as f:
     CHARACTERS = json.load(f)
     
-with open(str(SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
     DIALOGUES = json.load(f)
+
+if (SETTINGS_DIR / "general.json").exists():
+    with open(str(SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
+        SETTINGS = json.load(f)
+
+if (SETTINGS_DIR / "dialog-box.json").exists():
+    with open(str(SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
+        DIALOG_BOX = json.load(f)
+
+if (SETTINGS_DIR / "sprite.json").exists():
+    with open(str(SETTINGS_DIR / "sprite.json"), encoding="utf-8") as f:
+        SPRITE = json.load(f)
+
+if (SCRIPT_DIR / "characters.json").exists():
+    with open(str(SCRIPT_DIR / "characters.json"), encoding="utf-8") as f:
+        CHARACTERS = json.load(f)
+
+if (SCRIPT_DIR / "dialogues.json").exists():
+    with open(str(SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
+        DIALOGUES = json.load(f)
+
 
 VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
@@ -196,7 +229,13 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
     return wav_path, duration_frames
     
 def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
-    sprite_src = CHARACTER_SPRITE_DIR / f"{character}-{tag}.png"
+    sprite_name = f"{character}-{tag}.png"
+    sprite_src = CHARACTER_SPRITE_DIR / sprite_name
+    if not sprite_src.exists():
+        sprite_src = DEFAULT_CHARACTER_SPRITE_DIR / sprite_name
+    if not sprite_src.exists():
+        exit("[!] Error: Sprite Not Found")
+        
     sprite_path = root_dir / "images" / f"{character}-{tag}-{pos}.png"
     
     if sprite_path.exists():
@@ -227,7 +266,13 @@ def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
     return sprite_path
     
 def make_background(root_dir: Path, bgTag: str) -> Path:
-    bg_src = BACKGROUND_DIR / f"{bgTag}.png"
+    bg_name = f"{bgTag}.png"
+    bg_src = BACKGROUND_DIR / bg_name
+    if not bg_src.exists():
+        bg_src = DEFAULT_BACKGROUND_DIR / bg_name
+    if not bg_src.exists():
+        exit("[!] Error: Background Not Found")
+        
     print(bg_src)
     bg_path = root_dir / "images" / f"background-{bgTag}.png"
     

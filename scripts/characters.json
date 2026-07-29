@@ -4,13 +4,13 @@
         "name_color": [255, 180, 100],
         "voice": "irina",
         "voice_pitch": 0.9,
-        "voice_tempo": 0.9
+        "voice_tempo": 1
     },
     "lena": {
         "name": "Lena",
         "name_color": [100, 200, 255],
         "voice": "irina",
         "voice_pitch": 1.1,
-        "voice_tempo": 1
+        "voice_tempo": 1.1
     }
 }

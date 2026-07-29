@@ -14,34 +14,65 @@ import uuid
 import json
 
 VOICES = {
-    "irina": PiperVoice.load("piper-voices/irina/ru_RU-irina-medium.onnx")
+    "denis": PiperVoice.load("piper-voices/denis/ru_RU-denis-medium.onnx"),
+    "dmitri": PiperVoice.load("piper-voices/dmitri/ru_RU-dmitri-medium.onnx"),
+    "irina": PiperVoice.load("piper-voices/irina/ru_RU-irina-medium.onnx"),
+    "ruslan": PiperVoice.load("piper-voices/ruslan/ru_RU-ruslan-medium.onnx"),
 }
 
-SETTINGS_DIR = Path("settings")
-SCRIPT_DIR = Path("scripts")
-OUTPUT_DIR = Path("video-output")
-CHARACTER_SPRITE_DIR = Path("images") / "characters"
-BACKGROUND_DIR = Path("images") / "backgrounds"
+PROJECT_DIR = Path("project")
+DEFAULT_SETTINGS_DIR = Path("settings")
+DEFAULT_SCRIPT_DIR = Path("scripts")
+DEFAULT_CHARACTER_SPRITE_DIR = Path("images") / "characters"
+DEFAULT_BACKGROUND_DIR = Path("images") / "backgrounds"
+SETTINGS_DIR = PROJECT_DIR / Path("settings")
+SCRIPT_DIR = PROJECT_DIR / Path("scripts")
+OUTPUT_DIR = PROJECT_DIR / Path("video-output")
+CHARACTER_SPRITE_DIR = PROJECT_DIR / Path("images") / "characters"
+BACKGROUND_DIR = PROJECT_DIR / Path("images") / "backgrounds"
+
+if not PROJECT_DIR.exists():
+    os.mkdir(PROJECT_DIR)
 
 if OUTPUT_DIR.exists():
     shutil.rmtree(OUTPUT_DIR)
     
 os.mkdir(OUTPUT_DIR)
 
-with open(str(SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
     SETTINGS = json.load(f)
     
-with open(str(SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
     DIALOG_BOX = json.load(f)
     
-with open(str(SETTINGS_DIR / "sprite.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SETTINGS_DIR / "sprite.json"), encoding="utf-8") as f:
     SPRITE = json.load(f)
 
-with open(str(SCRIPT_DIR / "characters.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SCRIPT_DIR / "characters.json"), encoding="utf-8") as f:
     CHARACTERS = json.load(f)
     
-with open(str(SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
+with open(str(DEFAULT_SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
     DIALOGUES = json.load(f)
+
+if (SETTINGS_DIR / "general.json").exists():
+    with open(str(SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
+        SETTINGS = json.load(f)
+
+if (SETTINGS_DIR / "dialog-box.json").exists():
+    with open(str(SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
+        DIALOG_BOX = json.load(f)
+
+if (SETTINGS_DIR / "sprite.json").exists():
+    with open(str(SETTINGS_DIR / "sprite.json"), encoding="utf-8") as f:
+        SPRITE = json.load(f)
+
+if (SCRIPT_DIR / "characters.json").exists():
+    with open(str(SCRIPT_DIR / "characters.json"), encoding="utf-8") as f:
+        CHARACTERS = json.load(f)
+
+if (SCRIPT_DIR / "dialogues.json").exists():
+    with open(str(SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
+        DIALOGUES = json.load(f)
     
 VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
@@ -228,7 +259,13 @@ def generate_audio(line: dict, out_path: Path) -> float:
 def make_frame(line: dict, bg: Image.Image) -> Image.Image:
     frame = bg.copy()
     char_cfg = CHARACTERS[line['character']]
-    image_path = CHARACTER_SPRITE_DIR / f"{line['character']}-{line['image']}.png"
+    image_name = f"{line['character']}-{line['image']}.png"
+    image_path = CHARACTER_SPRITE_DIR / image_name
+    if not image_path.exists():
+        image_path = DEFAULT_CHARACTER_SPRITE_DIR / image_name
+    if not image_path.exists():
+        exit("[!] Error: Sprite Not Found")
+        
     frame = paste_sprite(frame, image_path, line['position'])
     frame = draw_dialog_box(frame, line['character'], line['text'])
     return frame
@@ -282,7 +319,14 @@ def concat_scenes(scene_paths: list[Path], output_path: Path):
 def main():
     for dialogue_index, dialogue in enumerate(DIALOGUES):
         print(f"\n[*] Creating dialogue {dialogue_index+1}/{len(DIALOGUES)} ({dialogue['tag']})...\n")
-        bg = make_background(BACKGROUND_DIR / f"{dialogue['background']}.png")
+        bg_name = f"{dialogue['background']}.png"
+        bg_path = BACKGROUND_DIR / bg_name
+        if not bg_path.exists():
+            bg_path = DEFAULT_BACKGROUND_DIR / bg_name
+        if not bg_path.exists():
+            exit("[!] Error: Background Not Found")
+            
+        bg = make_background(bg_path)
 
         scene_paths = []
 
