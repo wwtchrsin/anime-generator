@@ -6,24 +6,28 @@
         "lines": [
             {
                 "character": "masha",
+				"delays": "complete",
                 "position": "left",
                 "image": "normal",
                 "text": "А ты знала что из вентилей NAND можно собрать любую логическую функцию?"
             },
             {
                 "character": "lena",
+				"delays": "complete",
                 "position": "right",
                 "image": "giggle",
                 "text": "Нет"
             },
             {
                 "character": "masha",
+				"delays": "complete",
                 "position": "left",
                 "image": "smile",
                 "text": "Ну это так"
             },
             {
                 "character": "lena",
+				"delays": "complete",
                 "position": "right",
                 "image": "surprised",
                 "text": "Нихуя себе"
@@ -37,24 +41,28 @@
         "lines": [
             {
                 "character": "masha",
+				"delays": "complete",
                 "position": "left",
                 "image": "normal",
                 "text": "А ты знала что из вентилей NAND можно собрать любую логическую функцию?"
             },
             {
                 "character": "lena",
+				"delays": "complete",
                 "position": "right",
                 "image": "smile",
                 "text": "Вообще то знала"
             },
             {
                 "character": "masha",
+				"delays": "complete",
                 "position": "left",
                 "image": "surprised",
                 "text": "Вот как"
             },
             {
                 "character": "lena",
+				"delays": "complete",
                 "position": "right",
                 "image": "giggle",
                 "text": "Ага. Иди давай отсюда"

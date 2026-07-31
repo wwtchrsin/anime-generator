@@ -3,5 +3,7 @@
 	"video_height": 1280,
 	"fps": 24,
 	"audio_delay": 0.4,
-	"audio_pad": 0.8
+	"audio_delay_min": 0.1,
+	"audio_pad": 0.8,
+	"audio_pad_min": 0.5
 }

@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 from piper import PiperVoice
 import wave
 import json
+import string
 
 VOICES = {
     "denis": PiperVoice.load("piper-voices/denis/ru_RU-denis-medium.onnx"),
@@ -80,6 +81,28 @@ VIDEO_AR = VIDEO_W / VIDEO_H
 FPS = SETTINGS["fps"]
 AUDIO_DELAY = SETTINGS["audio_delay"]
 AUDIO_PAD = SETTINGS["audio_pad"]
+
+def get_file_tag(idx):
+    result = ""
+    while True:
+        result = string.ascii_lowercase[idx % 26] + result
+        idx = idx // 26 - 1
+        if idx < 0:
+            break
+    return result
+
+
+def get_audio_delays(line: dict) -> (float, float):
+    audio_delay = SETTINGS["audio_delay"]
+    audio_pad = SETTINGS["audio_pad"]
+    
+    if line["delays"] == "start" or line["delays"] == "middle":
+        audio_pad = SETTINGS["audio_pad_min"]
+        
+    if line["delays"] == "end" or line["delays"] == "middle":
+        audio_delay = SETTINGS["audio_delay_min"]
+    
+    return (audio_delay, audio_pad)
 
 def rt(frames: float) -> otio.opentime.RationalTime:
     return otio.opentime.RationalTime(frames, FPS)
@@ -189,15 +212,17 @@ def generate_text_png(root_dir: Path, idx: int, line: dict) -> Path:
     wrapped = auto_wrap(line['text'], font_text, max_text_width)
     draw.text((px, py), wrapped, font=font_text, fill=tuple(DIALOG_BOX["text_color"]))
 
-    path = root_dir / "images" / f"text_{idx:03d}_{line['character']}.png"
+    filetag =  get_file_tag(idx)
+    path = root_dir / "images" / f"text_{filetag}_{line['character']}.png"
     img.save(str(path))
     return path
 
 
 def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
     char_cfg = CHARACTERS[line['character']]
-    wav_temp_path = root_dir / "audio" / f"audio_{idx:03d}_temp.wav"
-    wav_path = root_dir / "audio" / f"audio_{idx:03d}.wav"
+    filetag = get_file_tag(idx)
+    wav_temp_path = root_dir / "audio" / f"audio_{filetag}_temp.wav"
+    wav_path = root_dir / "audio" / f"audio_{filetag}.wav"
     
     with wave.open(str(wav_temp_path), "w") as wav_file:
         wav_file.setnchannels(1)
@@ -223,7 +248,9 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
         str(wav_path),
     ], capture_output=True, text=True)
     
-    duration_sec = AUDIO_DELAY + float(result.stdout.strip()) + AUDIO_PAD
+    
+    audio_delay, audio_pad = get_audio_delays(line)
+    duration_sec = audio_delay + float(result.stdout.strip()) + audio_pad
     duration_frames = duration_sec * FPS
 
     return wav_path, duration_frames
@@ -347,15 +374,17 @@ def build_timeline(dtag: str, scenes: list[dict], bg_path: Path, dialog_path: Pa
     #V4: text
     v4 = otio.schema.Track(name="text", kind=otio.schema.TrackKind.Video)
     for i, s in enumerate(scenes):
-        v4.append(make_clip(f"text_{i:03d}", s["text_path"], s["frames"]))
+        filetag = get_file_tag(i)
+        v4.append(make_clip(f"text_{filetag}", s["text_path"], s["frames"]))
     tracks.append(v4)
 
     # A1: audio
-    audio_gap_frames = AUDIO_DELAY * FPS
+    audio_gap_frames = s['delays'][0] * FPS
     a1 = otio.schema.Track(name="dialogue", kind=otio.schema.TrackKind.Audio)
     for i, s in enumerate(scenes):
+        filetag = get_file_tag(i)
         a1.append(make_gap(audio_gap_frames))
-        a1.append(make_clip(f"audio_{i:03d}", s["audio_path"], s["frames"] - audio_gap_frames))
+        a1.append(make_clip(f"audio_{filetag}", s["audio_path"], s["frames"] - audio_gap_frames))
     tracks.append(a1)
 
     return timeline
@@ -376,6 +405,7 @@ def main():
 
         for idx, line in enumerate(dialogue['lines']):
             char_tag = line['character']
+            delays = get_audio_delays(line)
             char_cfg = CHARACTERS[char_tag]
             print(f"  [{idx+1}/{len(dialogue['lines'])}] {char_cfg['name']}: {line['text'][:45]}...")
 
@@ -385,6 +415,7 @@ def main():
 
             scenes.append({
                 "character": char_tag,
+                "delays": delays,
                 "text_path": text_png,
                 "audio_path": audio_wav,
                 "image_path": sprite_png,

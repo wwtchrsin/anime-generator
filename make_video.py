@@ -78,9 +78,6 @@ if (SCRIPT_DIR / "dialogues.json").exists():
 VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
 VIDEO_AR = VIDEO_W / VIDEO_H
-FPS = SETTINGS["fps"]
-AUDIO_DELAY = SETTINGS["audio_delay"]
-AUDIO_PAD = SETTINGS["audio_pad"]
 
 def load_font(size: int) -> ImageFont.FreeTypeFont:
     candidates = [
@@ -93,6 +90,18 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
             return ImageFont.truetype(path, size)
     return ImageFont.load_default()
 
+
+def get_audio_delays(line: dict) -> (float, float):
+    audio_delay = SETTINGS["audio_delay"]
+    audio_pad = SETTINGS["audio_pad"]
+    
+    if line["delays"] == "start" or line["delays"] == "middle":
+        audio_pad = SETTINGS["audio_pad_min"]
+        
+    if line["delays"] == "end" or line["delays"] == "middle":
+        audio_delay = SETTINGS["audio_delay_min"]
+    
+    return (audio_delay, audio_pad)
 
 def make_background(bg_path: Path) -> Image.Image:
     if bg_path.exists():
@@ -215,7 +224,7 @@ def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Imag
     py = box_y + dialog_padding
 
     # character name
-    draw.text((px, py), character, font=font_name, fill=tuple(char_cfg["name_color"]))
+    draw.text((px, py), char_cfg["name"], font=font_name, fill=tuple(char_cfg["name_color"]))
     py += dialog_name_size + 8
 
     # line text
@@ -254,7 +263,9 @@ def generate_audio(line: dict, out_path: Path) -> float:
         str(out_path),
     ], capture_output=True, text=True)
     
-    return AUDIO_DELAY + float(result.stdout.strip()) + AUDIO_PAD
+    audio_delay, audio_pad = get_audio_delays(line)
+    
+    return audio_delay + float(result.stdout.strip()) + audio_pad
 
 
 def make_frame(line: dict, bg: Image.Image) -> Image.Image:
@@ -276,6 +287,8 @@ def render_scene(idx: int, line: dict, bg: Image.Image, audio_path: Path,
                duration: float,
                scene_path: Path):
     
+    audio_delay, audio_pad = get_audio_delays(line)
+    
     frame = make_frame(line, bg)
     frame_path = OUTPUT_DIR / f"frame_{idx:03d}.png"
     frame.convert("RGB").save(str(frame_path))
@@ -283,9 +296,10 @@ def render_scene(idx: int, line: dict, bg: Image.Image, audio_path: Path,
     subprocess.run([
         "ffmpeg", "-y",
         "-loop", "1",
+        "-r", str(SETTINGS["fps"]),
         "-i", str(frame_path),
         "-i", str(audio_path),
-        "-af", f"adelay={int(AUDIO_DELAY*1000)}|{int(AUDIO_DELAY*1000)},apad=pad_dur={AUDIO_PAD}",
+        "-af", f"adelay={int(audio_delay*1000)}|{int(audio_delay*1000)},apad=pad_dur={audio_pad}",
         "-c:v", "libx264",
         "-tune", "stillimage",
         "-c:a", "aac",
