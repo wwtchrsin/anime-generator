@@ -20,11 +20,12 @@ VOICES = {
     "ruslan": PiperVoice.load("piper-voices/ruslan/ru_RU-ruslan-medium.onnx"),
 }
 
+DEFAULT_PROJECT_DIR = Path("example")
 PROJECT_DIR = Path("project")
-DEFAULT_SETTINGS_DIR = Path("settings")
-DEFAULT_SCRIPT_DIR = Path("scripts")
-DEFAULT_CHARACTER_SPRITE_DIR = Path("images") / "characters"
-DEFAULT_BACKGROUND_DIR = Path("images") / "backgrounds"
+DEFAULT_SETTINGS_DIR = DEFAULT_PROJECT_DIR / Path("settings")
+DEFAULT_SCRIPT_DIR = DEFAULT_PROJECT_DIR / Path("scripts")
+DEFAULT_CHARACTER_SPRITE_DIR = DEFAULT_PROJECT_DIR / Path("images") / "characters"
+DEFAULT_BACKGROUND_DIR = DEFAULT_PROJECT_DIR / Path("images") / "backgrounds"
 SETTINGS_DIR = PROJECT_DIR / Path("settings")
 SCRIPT_DIR = PROJECT_DIR / Path("scripts")
 OUTPUT_DIR = PROJECT_DIR / Path("video-output")
