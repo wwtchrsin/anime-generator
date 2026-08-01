@@ -11,6 +11,7 @@ from piper import PiperVoice
 import wave
 import json
 import string
+import sys
 
 VOICES = {
     "denis": PiperVoice.load("piper-voices/denis/ru_RU-denis-medium.onnx"),
@@ -19,8 +20,13 @@ VOICES = {
     "ruslan": PiperVoice.load("piper-voices/ruslan/ru_RU-ruslan-medium.onnx"),
 }
 
-DEFAULT_PROJECT_DIR = Path("example")
-PROJECT_DIR = Path("project")
+PROJECT_NAME = "example"
+
+if len(sys.argv) > 1:
+    PROJECT_NAME = sys.argv[1]
+
+DEFAULT_PROJECT_DIR = Path("projects") / "example"
+PROJECT_DIR = Path("projects") / PROJECT_NAME
 DEFAULT_SETTINGS_DIR = DEFAULT_PROJECT_DIR / Path("settings")
 DEFAULT_SCRIPT_DIR = DEFAULT_PROJECT_DIR / Path("scripts")
 DEFAULT_CHARACTER_SPRITE_DIR = DEFAULT_PROJECT_DIR / Path("images") / "characters"
@@ -390,6 +396,7 @@ def build_timeline(dtag: str, scenes: list[dict], bg_path: Path, dialog_path: Pa
     return timeline
 
 def main():
+    print(f"\n[*] Working on project '{PROJECT_NAME}'...\n")
     for dialogue_index, dialogue in enumerate(DIALOGUES):
         print(f"\n[*] Creating dialogue {dialogue_index+1}/{len(DIALOGUES)} ({dialogue['tag']})...\n")
         

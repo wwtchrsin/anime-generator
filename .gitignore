@@ -222,4 +222,7 @@ __marimo__/
 
 #######################################
 
-project
+projects/*
+!projects/example/
+projects/example/timeline-output/
+projects/example/video-output/
