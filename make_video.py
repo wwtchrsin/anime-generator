@@ -277,10 +277,9 @@ def generate_audio(line: dict, out_path: Path) -> float:
 def make_frame(line: dict, bg: Image.Image) -> Image.Image:
     frame = bg.copy()
     char_cfg = CHARACTERS[line['character']]
-    image_name = f"{line['character']}-{line['image']}.png"
-    image_path = CHARACTER_SPRITE_DIR / image_name
+    image_path = CHARACTER_SPRITE_DIR / line['character'] / f"{line['image']}.png"
     if not image_path.exists():
-        image_path = DEFAULT_CHARACTER_SPRITE_DIR / image_name
+        image_path = DEFAULT_CHARACTER_SPRITE_DIR / line['character'] / f"{line['image']}.png"
     if not image_path.exists():
         exit("[!] Error: Sprite Not Found")
         

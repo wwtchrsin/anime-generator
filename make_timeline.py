@@ -262,17 +262,16 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
     return wav_path, duration_frames
     
 def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
-    sprite_name = f"{character}-{tag}.png"
-    sprite_src = CHARACTER_SPRITE_DIR / sprite_name
-    if not sprite_src.exists():
-        sprite_src = DEFAULT_CHARACTER_SPRITE_DIR / sprite_name
-    if not sprite_src.exists():
-        exit("[!] Error: Sprite Not Found")
-        
     sprite_path = root_dir / "images" / f"{character}-{tag}-{pos}.png"
     
     if sprite_path.exists():
         return sprite_path
+    
+    sprite_src = CHARACTER_SPRITE_DIR / character / f"{tag}.png"
+    if not sprite_src.exists():
+        sprite_src = DEFAULT_CHARACTER_SPRITE_DIR / character / f"{tag}.png"
+    if not sprite_src.exists():
+        exit("[!] Error: Sprite Not Found")
     
     img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
     
