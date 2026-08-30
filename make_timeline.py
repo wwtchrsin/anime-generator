@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import subprocess
-import textwrap
 from pathlib import Path
 import shutil
 import os
@@ -12,13 +11,6 @@ import wave
 import json
 import string
 import sys
-
-VOICES = {
-    "denis": PiperVoice.load("piper-voices/denis/ru_RU-denis-medium.onnx"),
-    "dmitri": PiperVoice.load("piper-voices/dmitri/ru_RU-dmitri-medium.onnx"),
-    "irina": PiperVoice.load("piper-voices/irina/ru_RU-irina-medium.onnx"),
-    "ruslan": PiperVoice.load("piper-voices/ruslan/ru_RU-ruslan-medium.onnx"),
-}
 
 PROJECT_NAME = "example"
 
@@ -88,6 +80,13 @@ FPS = SETTINGS["fps"]
 AUDIO_DELAY = SETTINGS["audio_delay"]
 AUDIO_PAD = SETTINGS["audio_pad"]
 
+VOICES = {}
+
+for charTag in CHARACTERS:
+    voiceTag = CHARACTERS[charTag]["voice"]
+    VOICES[charTag] = PiperVoice.load(f"piper-voices/{voiceTag}.onnx")
+
+
 def get_file_tag(idx):
     result = ""
     while True:
@@ -98,7 +97,7 @@ def get_file_tag(idx):
     return result
 
 
-def get_audio_delays(line: dict) -> (float, float):
+def get_audio_delays(line: dict) -> tuple[float, float]:
     audio_delay = SETTINGS["audio_delay"]
     audio_pad = SETTINGS["audio_pad"]
     
@@ -118,7 +117,7 @@ def tr(start: float, dur: float) -> otio.opentime.TimeRange:
 
 def make_clip(name: str, path: Path, duration_frames: float,
               start_frame: float = 0) -> otio.schema.Clip:
-    """Создаёт OTIO клип со ссылкой на файл."""
+    """Create OTIO clip and return reference"""
     return otio.schema.Clip(
         name=name,
         media_reference=otio.schema.ExternalReference(
@@ -150,7 +149,6 @@ def generate_dialogbox_png(root_dir: Path) -> Path:
     
     short_side = min(VIDEO_W, VIDEO_H)
     dialog_margin = int(DIALOG_BOX["margin"] * short_side)
-    dialog_padding = int(DIALOG_BOX["padding"] * short_side)
     dialog_height = int(DIALOG_BOX["height"] * VIDEO_H)
     dialog_border_width = int(round(DIALOG_BOX["border_width"] * short_side))
     
@@ -233,9 +231,9 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
     with wave.open(str(wav_temp_path), "w") as wav_file:
         wav_file.setnchannels(1)
         wav_file.setsampwidth(2)
-        wav_file.setframerate(VOICES[char_cfg['voice']].config.sample_rate)
+        wav_file.setframerate(VOICES[line['character']].config.sample_rate)
         
-        for audio_bytes in VOICES[char_cfg['voice']].synthesize(line['text']):
+        for audio_bytes in VOICES[line['character']].synthesize(line['text']):
             wav_file.writeframes(audio_bytes.audio_int16_bytes)
 
     subprocess.run([
@@ -343,7 +341,7 @@ def make_background(root_dir: Path, bgTag: str) -> Path:
     return bg_path
     
       
-def build_timeline(dtag: str, scenes: list[dict], bg_path: Path, dialog_path: Path, lang: str) -> otio.schema.Timeline:
+def build_timeline(dtag: str, scenes: list[dict], bg_path: Path, dialog_path: Path) -> otio.schema.Timeline:
     """
     Tracks
       V1  background
@@ -430,7 +428,7 @@ def main():
             print(f"    {frames/FPS:.1f}s  ({int(frames)} frames)")
 
         print("  Assembling timeline...")
-        timeline = build_timeline(dialogue['tag'], scenes, bg_path=bg_path, dialog_path=dialog_path, lang=dialogue['lang'])
+        timeline = build_timeline(dialogue['tag'], scenes, bg_path=bg_path, dialog_path=dialog_path)
 
         otio_path = root_dir / f"{dialogue['tag']}.otio"
         otio.adapters.write_to_file(timeline, str(otio_path))

@@ -1,7 +1,6 @@
 [
     {
         "tag": "dialogue-1",
-        "lang": "ru",
         "background": "outdoors",
         "lines": [
             {
@@ -9,34 +8,33 @@
 				"delays": "complete",
                 "position": "left",
                 "image": "normal",
-                "text": "А ты знала что из вентилей NAND можно собрать любую логическую функцию?"
+                "text": "Did you know you can build any logic function from NAND gates?"
             },
             {
                 "character": "lena",
 				"delays": "complete",
                 "position": "right",
                 "image": "giggle",
-                "text": "Нет"
+                "text": "No"
             },
             {
                 "character": "masha",
 				"delays": "complete",
                 "position": "left",
                 "image": "smile",
-                "text": "Ну это так"
+                "text": "Well, you can"
             },
             {
                 "character": "lena",
 				"delays": "complete",
                 "position": "right",
                 "image": "surprised",
-                "text": "Нихуя себе"
+                "text": "Holy shit"
             }
         ]
    },
    {
         "tag": "dialogue-2",
-        "lang": "ru",
         "background": "outdoors",
         "lines": [
             {
@@ -44,28 +42,28 @@
 				"delays": "complete",
                 "position": "left",
                 "image": "normal",
-                "text": "А ты знала что из вентилей NAND можно собрать любую логическую функцию?"
+                "text": "Did you know you can build any logic function from NAND gates?"
             },
             {
                 "character": "lena",
 				"delays": "complete",
                 "position": "right",
                 "image": "smile",
-                "text": "Вообще то знала"
+                "text": "Actually, yeah, I did."
             },
             {
                 "character": "masha",
 				"delays": "complete",
                 "position": "left",
                 "image": "surprised",
-                "text": "Вот как"
+                "text": "Oh..."
             },
             {
                 "character": "lena",
 				"delays": "complete",
                 "position": "right",
                 "image": "giggle",
-                "text": "Ага. Иди давай отсюда"
+                "text": "Go on, get out of here"
             }
         ]
    }

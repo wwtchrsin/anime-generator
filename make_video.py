@@ -2,7 +2,6 @@
 
 import os
 import subprocess
-import textwrap
 from pathlib import Path
 import shutil
 import os
@@ -13,13 +12,6 @@ import time
 import uuid
 import json
 import sys
-
-VOICES = {
-    "denis": PiperVoice.load("piper-voices/denis/ru_RU-denis-medium.onnx"),
-    "dmitri": PiperVoice.load("piper-voices/dmitri/ru_RU-dmitri-medium.onnx"),
-    "irina": PiperVoice.load("piper-voices/irina/ru_RU-irina-medium.onnx"),
-    "ruslan": PiperVoice.load("piper-voices/ruslan/ru_RU-ruslan-medium.onnx"),
-}
 
 PROJECT_NAME = "example"
 
@@ -85,6 +77,12 @@ VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
 VIDEO_AR = VIDEO_W / VIDEO_H
 
+VOICES = {}
+
+for charTag in CHARACTERS:
+    voiceTag = CHARACTERS[charTag]["voice"]
+    VOICES[charTag] = PiperVoice.load(f"piper-voices/{voiceTag}.onnx")
+
 def load_font(size: int) -> ImageFont.FreeTypeFont:
     candidates = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -97,7 +95,7 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
-def get_audio_delays(line: dict) -> (float, float):
+def get_audio_delays(line: dict) -> tuple[float, float]:
     audio_delay = SETTINGS["audio_delay"]
     audio_pad = SETTINGS["audio_pad"]
     
@@ -248,9 +246,9 @@ def generate_audio(line: dict, out_path: Path) -> float:
     with wave.open(str(temp_path), "w") as wav_file:
         wav_file.setnchannels(1)
         wav_file.setsampwidth(2)
-        wav_file.setframerate(VOICES[char_cfg['voice']].config.sample_rate)
+        wav_file.setframerate(VOICES[line['character']].config.sample_rate)
         
-        for audio_bytes in VOICES[char_cfg['voice']].synthesize(line['text']):
+        for audio_bytes in VOICES[line['character']].synthesize(line['text']):
             wav_file.writeframes(audio_bytes.audio_int16_bytes)
     
     subprocess.run([
@@ -276,7 +274,6 @@ def generate_audio(line: dict, out_path: Path) -> float:
 
 def make_frame(line: dict, bg: Image.Image) -> Image.Image:
     frame = bg.copy()
-    char_cfg = CHARACTERS[line['character']]
     image_path = CHARACTER_SPRITE_DIR / line['character'] / f"{line['image']}.png"
     if not image_path.exists():
         image_path = DEFAULT_CHARACTER_SPRITE_DIR / line['character'] / f"{line['image']}.png"
@@ -378,3 +375,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+os._exit(0)

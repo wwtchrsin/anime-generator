@@ -13,12 +13,12 @@ by placing the corresponding files in the project directory.
 
 ## Project structure
 * Character sprite: `images/characters/<character_tag>/<image_tag>.png`
-* Backgrounds: `images/backgrounds/<background_tag>.png`
+* Background: `images/backgrounds/<background_tag>.png`
 * Dialogues: `scripts/dialogues.json`
 * Character list: `scripts/characters.json`
 * Output file resolution and frame rate: `settings/general.json`
 * Text size and dialog box: `settings/dialog-box.json`
-* Sprite placement: `settings/sprite.json`
+* Sprite size and position: `settings/sprite.json`
 
 ## DialogueLine interface
 ```javascript
@@ -35,11 +35,17 @@ by placing the corresponding files in the project directory.
 ```javascript
 {
   "tag": string, //output file name
-  "lang": string, //voice language
   "background": string, //<background_tag>
   "lines": DialogueLine[],
 }[]
 ```
+
+## Voices
+The utility uses `piper-voice` model for voice generation. All voices available to the utility are located in 
+the **piper-voices** directory. Any additional voices you might need can be downloaded from the model's 
+official page. Make sure to copy to the **piper-voices** directory both .onnx and .onnx.json files. In the 
+character description (`scripts/characters.json`) you specify the voice using the voice file name without its 
+extension.
 
 ## Generating video
 ```bash
