@@ -101,10 +101,10 @@ def get_audio_delays(line: dict) -> tuple[float, float]:
     audio_delay = SETTINGS["audio_delay"]
     audio_pad = SETTINGS["audio_pad"]
     
-    if line["delays"] == "start" or line["delays"] == "middle":
+    if line["delays"] == "start" or line["delays"] == "no":
         audio_pad = SETTINGS["audio_pad_min"]
         
-    if line["delays"] == "end" or line["delays"] == "middle":
+    if line["delays"] == "end" or line["delays"] == "no":
         audio_delay = SETTINGS["audio_delay_min"]
     
     return (audio_delay, audio_pad)

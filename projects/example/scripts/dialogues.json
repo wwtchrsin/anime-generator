@@ -5,28 +5,28 @@
         "lines": [
             {
                 "character": "masha",
-				"delays": "complete",
+				"delays": "both",
                 "position": "left",
                 "image": "normal",
                 "text": "Did you know you can build any logic function from NAND gates?"
             },
             {
                 "character": "lena",
-				"delays": "complete",
+				"delays": "both",
                 "position": "right",
                 "image": "giggle",
                 "text": "No"
             },
             {
                 "character": "masha",
-				"delays": "complete",
+				"delays": "both",
                 "position": "left",
                 "image": "smile",
                 "text": "Well, you can"
             },
             {
                 "character": "lena",
-				"delays": "complete",
+				"delays": "both",
                 "position": "right",
                 "image": "surprised",
                 "text": "Holy shit"
@@ -39,28 +39,28 @@
         "lines": [
             {
                 "character": "masha",
-				"delays": "complete",
+				"delays": "both",
                 "position": "left",
                 "image": "normal",
                 "text": "Did you know you can build any logic function from NAND gates?"
             },
             {
                 "character": "lena",
-				"delays": "complete",
+				"delays": "both",
                 "position": "right",
                 "image": "smile",
                 "text": "Actually, yeah, I did."
             },
             {
                 "character": "masha",
-				"delays": "complete",
+				"delays": "both",
                 "position": "left",
                 "image": "surprised",
                 "text": "Oh..."
             },
             {
                 "character": "lena",
-				"delays": "complete",
+				"delays": "both",
                 "position": "right",
                 "image": "giggle",
                 "text": "Go on, get out of here"

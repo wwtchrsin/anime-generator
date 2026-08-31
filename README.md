@@ -24,7 +24,7 @@ by placing the corresponding files in the project directory.
 ```javascript
 {
   "character": string, //<character_tag>
-  "delays": "complete" | "start" | "middle" | "end", //type of audio delays
+  "delays": "both" | "start" | "end" | "no", //audio delays
   "position": "left" | "right", //sprite alignment
   "image": string, //<image_tag>
   "text": string, //line text
@@ -41,11 +41,12 @@ by placing the corresponding files in the project directory.
 ```
 
 ## Voices
-The utility uses `piper-voice` model for voice generation. All voices available to the utility are located in 
-the **piper-voices** directory. Any additional voices you might need can be downloaded from the model's 
-official page. Make sure to copy to the **piper-voices** directory both .onnx and .onnx.json files. In the 
-character description (`scripts/characters.json`) you specify the voice using the voice file name without its 
-extension.
+The utility uses `piper-voice` model for voice generation. All voices available to 
+the utility are located in the **piper-voices** directory. Any additional voices you 
+might need can be downloaded from the model's official page. Make sure to copy to the 
+**piper-voices** directory both .onnx and .onnx.json files. In the character 
+description (`scripts/characters.json`) you specify the voice using the voice file 
+name without its extension.
 
 ## Generating video
 ```bash
