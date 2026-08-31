@@ -279,7 +279,7 @@ def make_frame(line: dict, bg: Image.Image) -> Image.Image:
     if not image_path.exists():
         image_path = DEFAULT_CHARACTER_SPRITE_DIR / line['character'] / f"{line['image']}.png"
     if not image_path.exists():
-        exit("[!] Error: Sprite Not Found")
+        exit(f"[!] Error: Sprite {line['character']}/{line['image']} Not Found")
         
     frame = paste_sprite(frame, image_path, line['position'])
     frame = draw_dialog_box(frame, line['character'], line['text'][-1])

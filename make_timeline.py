@@ -269,7 +269,7 @@ def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
     if not sprite_src.exists():
         sprite_src = DEFAULT_CHARACTER_SPRITE_DIR / character / f"{tag}.png"
     if not sprite_src.exists():
-        exit("[!] Error: Sprite Not Found")
+        exit(f"[!] Error: Sprite {character}/{tag} Not Found")
     
     img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
     
