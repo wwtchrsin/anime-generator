@@ -248,7 +248,7 @@ def generate_audio(line: dict, out_path: Path) -> float:
         wav_file.setsampwidth(2)
         wav_file.setframerate(VOICES[line['character']].config.sample_rate)
         
-        for audio_bytes in VOICES[line['character']].synthesize(line['text']):
+        for audio_bytes in VOICES[line['character']].synthesize(line['text'][0]):
             wav_file.writeframes(audio_bytes.audio_int16_bytes)
     
     subprocess.run([
@@ -274,6 +274,7 @@ def generate_audio(line: dict, out_path: Path) -> float:
 
 def make_frame(line: dict, bg: Image.Image) -> Image.Image:
     frame = bg.copy()
+
     image_path = CHARACTER_SPRITE_DIR / line['character'] / f"{line['image']}.png"
     if not image_path.exists():
         image_path = DEFAULT_CHARACTER_SPRITE_DIR / line['character'] / f"{line['image']}.png"
@@ -281,7 +282,7 @@ def make_frame(line: dict, bg: Image.Image) -> Image.Image:
         exit("[!] Error: Sprite Not Found")
         
     frame = paste_sprite(frame, image_path, line['position'])
-    frame = draw_dialog_box(frame, line['character'], line['text'])
+    frame = draw_dialog_box(frame, line['character'], line['text'][-1])
     return frame
 
 
@@ -351,7 +352,7 @@ def main():
         for idx, line in enumerate(dialogue['lines']):
             char_cfg = CHARACTERS[line['character']]
             
-            print(f"  [{idx+1}/{len(dialogue['lines'])}] {char_cfg['name']}: {line['text'][:45]}...")
+            print(f"  [{idx+1}/{len(dialogue['lines'])}] {char_cfg['name']}: {line['text'][0][:45]}...")
 
             audio_path = OUTPUT_DIR / f"{dialogue['tag']}_audio_{idx:03d}.wav"
             scene_path = OUTPUT_DIR / f"{dialogue['tag']}_scene_{idx:03d}.mp4"

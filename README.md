@@ -27,7 +27,9 @@ by placing the corresponding files in the project directory.
   "delays": "both" | "start" | "end" | "no", //audio delays
   "position": "left" | "right", //sprite alignment
   "image": string, //<image_tag>
-  "text": string, //line text
+  "text": string[], //first array element used to generate audio,
+                    //last array element used to generate dialogue box,
+                    //a single element is both first and last
 }
 ```
 
