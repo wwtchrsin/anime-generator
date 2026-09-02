@@ -213,7 +213,7 @@ def generate_text_png(root_dir: Path, idx: int, line: dict) -> Path:
     py += dialog_name_size + 8
 
     # character line
-    wrapped = auto_wrap(line['text'][-1], font_text, max_text_width)
+    wrapped = auto_wrap(line['text'][0], font_text, max_text_width)
     draw.text((px, py), wrapped, font=font_text, fill=tuple(DIALOG_BOX["text_color"]))
 
     filetag =  get_file_tag(idx)
@@ -233,7 +233,7 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
         wav_file.setsampwidth(2)
         wav_file.setframerate(VOICES[line['character']].config.sample_rate)
         
-        for audio_bytes in VOICES[line['character']].synthesize(line['text'][0]):
+        for audio_bytes in VOICES[line['character']].synthesize(line['text'][-1]):
             wav_file.writeframes(audio_bytes.audio_int16_bytes)
 
     subprocess.run([

@@ -248,7 +248,7 @@ def generate_audio(line: dict, out_path: Path) -> float:
         wav_file.setsampwidth(2)
         wav_file.setframerate(VOICES[line['character']].config.sample_rate)
         
-        for audio_bytes in VOICES[line['character']].synthesize(line['text'][0]):
+        for audio_bytes in VOICES[line['character']].synthesize(line['text'][-1]):
             wav_file.writeframes(audio_bytes.audio_int16_bytes)
     
     subprocess.run([
@@ -282,7 +282,7 @@ def make_frame(line: dict, bg: Image.Image) -> Image.Image:
         exit(f"[!] Error: Sprite {line['character']}/{line['image']} Not Found")
         
     frame = paste_sprite(frame, image_path, line['position'])
-    frame = draw_dialog_box(frame, line['character'], line['text'][-1])
+    frame = draw_dialog_box(frame, line['character'], line['text'][0])
     return frame
 
 
