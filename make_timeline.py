@@ -246,7 +246,7 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
         subprocess.run([
             "ffmpeg", 
             "-f", "lavfi",
-            "-i", "anullsrc=r=44100:cl=stereo",
+            "-i", f"anullsrc=r={VOICES[line['character']].config.sample_rate}:cl=mono",
             "-t", str(audio_class["silence"]),
             "-c:a", "pcm_s16le",
             str(wav_path)
