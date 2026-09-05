@@ -17,6 +17,7 @@ by placing the corresponding files in the project directory.
 * Dialogues: `scripts/dialogues.json`
 * Character list: `scripts/characters.json`
 * Output file resolution and frame rate: `settings/general.json`
+* Dialogue line audio classes: `settings/audio.json`
 * Text size and dialog box: `settings/dialog-box.json`
 * Sprite size and position: `settings/sprite.json`
 
@@ -24,7 +25,8 @@ by placing the corresponding files in the project directory.
 ```javascript
 {
   "character": string, //<character_tag>
-  "delays": "both" | "start" | "end" | "no", //audio delays
+  "audio": "complete" | "start" | "end" | "middle", //audio class,
+                      //defines the position of audio in a sentence
   "position": "left" | "right", //sprite alignment
   "image": string, //<image_tag>
   "text": string[], //first array element used to generate text,

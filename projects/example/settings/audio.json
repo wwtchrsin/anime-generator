@@ -1,0 +1,22 @@
+{
+    "complete": {
+        "before": 0.4,
+        "after": 0.8,
+        "silence": 1
+    },
+    "start": {
+        "before": 0.4,
+        "after": 0.4,
+        "silence": 1
+    },
+    "end": {
+        "before": 0.1,
+        "after": 0.8,
+        "silence": 1
+    },
+    "middle": {
+        "before": 0.1,
+        "after": 0.4,
+        "silence": 1
+    }
+}

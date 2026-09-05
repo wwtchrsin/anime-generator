@@ -40,6 +40,9 @@ os.mkdir(OUTPUT_DIR)
 
 with open(str(DEFAULT_SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
     SETTINGS = json.load(f)
+
+with open(str(DEFAULT_SETTINGS_DIR / "audio.json"), encoding="utf-8") as f:
+    AUDIO_CLASSES = json.load(f)
     
 with open(str(DEFAULT_SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
     DIALOG_BOX = json.load(f)
@@ -56,6 +59,10 @@ with open(str(DEFAULT_SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
 if (SETTINGS_DIR / "general.json").exists():
     with open(str(SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
         SETTINGS = json.load(f)
+
+if (SETTINGS_DIR / "audio.json").exists():
+    with open(str(SETTINGS_DIR / "audio.json"), encoding="utf-8") as f:
+        AUDIO_CLASSES = json.load(f)
 
 if (SETTINGS_DIR / "dialog-box.json").exists():
     with open(str(SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
@@ -94,18 +101,6 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
             return ImageFont.truetype(path, size)
     return ImageFont.load_default()
 
-
-def get_audio_delays(line: dict) -> tuple[float, float]:
-    audio_delay = SETTINGS["audio_delay"]
-    audio_pad = SETTINGS["audio_pad"]
-    
-    if line["delays"] == "start" or line["delays"] == "no":
-        audio_pad = SETTINGS["audio_pad_min"]
-        
-    if line["delays"] == "end" or line["delays"] == "no":
-        audio_delay = SETTINGS["audio_delay_min"]
-    
-    return (audio_delay, audio_pad)
 
 def make_background(bg_path: Path) -> Image.Image:
     if bg_path.exists():
@@ -240,24 +235,40 @@ def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Imag
 
 def generate_audio(line: dict, out_path: Path) -> float:
     char_cfg = CHARACTERS[line['character']]
-    timestamp = int(time.time() * 1000)
-    temp_path = OUTPUT_DIR / f"{timestamp}_{uuid.uuid4().hex[:8]}.wav"
-    
-    with wave.open(str(temp_path), "w") as wav_file:
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(VOICES[line['character']].config.sample_rate)
+
+    if line["audio"] not in AUDIO_CLASSES:
+        exit(f"[!] Delay Class ({line["audio"]}) Not Found")
+
+    audio_class = AUDIO_CLASSES[line["audio"]]
+
+    if len(line["text"][-1]) > 0:
+        timestamp = int(time.time() * 1000)
+        temp_path = OUTPUT_DIR / f"{timestamp}_{uuid.uuid4().hex[:8]}.wav"
         
-        for audio_bytes in VOICES[line['character']].synthesize(line['text'][-1]):
-            wav_file.writeframes(audio_bytes.audio_int16_bytes)
-    
-    subprocess.run([
-        "ffmpeg", "-i", str(temp_path), "-af", 
-        f"rubberband=pitch={char_cfg['voice_pitch']},atempo={char_cfg['voice_tempo']}",
-        str(out_path)
-    ], capture_output=True)
-    
-    os.remove(str(temp_path))
+        with wave.open(str(temp_path), "w") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(VOICES[line['character']].config.sample_rate)
+            
+            for audio_bytes in VOICES[line['character']].synthesize(line['text'][-1]):
+                wav_file.writeframes(audio_bytes.audio_int16_bytes)
+        
+        subprocess.run([
+            "ffmpeg", "-i", str(temp_path), "-af", 
+            f"rubberband=pitch={char_cfg['voice_pitch']},atempo={char_cfg['voice_tempo']}",
+            str(out_path)
+        ], capture_output=True)
+        
+        os.remove(str(temp_path))
+    else:
+        subprocess.run([
+            "ffmpeg", 
+            "-f", "lavfi",
+            "-i", "anullsrc=r=44100:cl=stereo",
+            "-t", str(audio_class["silence"]),
+            "-c:a", "pcm_s16le",
+            str(out_path)
+        ], capture_output=True)
     
     # defining duration
     result = subprocess.run([
@@ -267,9 +278,7 @@ def generate_audio(line: dict, out_path: Path) -> float:
         str(out_path),
     ], capture_output=True, text=True)
     
-    audio_delay, audio_pad = get_audio_delays(line)
-    
-    return audio_delay + float(result.stdout.strip()) + audio_pad
+    return audio_class["before"] + float(result.stdout.strip()) + audio_class["after"]
 
 
 def make_frame(line: dict, bg: Image.Image) -> Image.Image:
@@ -289,8 +298,11 @@ def make_frame(line: dict, bg: Image.Image) -> Image.Image:
 def render_scene(idx: int, line: dict, bg: Image.Image, audio_path: Path, 
                duration: float,
                scene_path: Path):
-    
-    audio_delay, audio_pad = get_audio_delays(line)
+
+    if line["audio"] not in AUDIO_CLASSES:
+        exit(f"[!] Delay Class ({line["audio"]}) Not Found")
+
+    audio_class = AUDIO_CLASSES[line["audio"]]
     
     frame = make_frame(line, bg)
     frame_path = OUTPUT_DIR / f"frame_{idx:03d}.png"
@@ -302,7 +314,7 @@ def render_scene(idx: int, line: dict, bg: Image.Image, audio_path: Path,
         "-r", str(SETTINGS["fps"]),
         "-i", str(frame_path),
         "-i", str(audio_path),
-        "-af", f"adelay={int(audio_delay*1000)}|{int(audio_delay*1000)},apad=pad_dur={audio_pad}",
+        "-af", f"adelay={int(audio_class["before"]*1000)}|{int(audio_class["before"]*1000)},apad=pad_dur={audio_class["after"]}",
         "-c:v", "libx264",
         "-tune", "stillimage",
         "-c:a", "aac",

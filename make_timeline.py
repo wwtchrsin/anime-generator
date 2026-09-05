@@ -39,6 +39,9 @@ os.mkdir(OUTPUT_DIR)
 
 with open(str(DEFAULT_SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
     SETTINGS = json.load(f)
+
+with open(str(DEFAULT_SETTINGS_DIR / "audio.json"), encoding="utf-8") as f:
+    AUDIO_CLASSES = json.load(f)
     
 with open(str(DEFAULT_SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
     DIALOG_BOX = json.load(f)
@@ -55,6 +58,10 @@ with open(str(DEFAULT_SCRIPT_DIR / "dialogues.json"), encoding="utf-8") as f:
 if (SETTINGS_DIR / "general.json").exists():
     with open(str(SETTINGS_DIR / "general.json"), encoding="utf-8") as f:
         SETTINGS = json.load(f)
+
+if (SETTINGS_DIR / "audio.json").exists():
+    with open(str(SETTINGS_DIR / "audio.json"), encoding="utf-8") as f:
+        AUDIO_CLASSES = json.load(f)
 
 if (SETTINGS_DIR / "dialog-box.json").exists():
     with open(str(SETTINGS_DIR / "dialog-box.json"), encoding="utf-8") as f:
@@ -77,8 +84,6 @@ VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
 VIDEO_AR = VIDEO_W / VIDEO_H
 FPS = SETTINGS["fps"]
-AUDIO_DELAY = SETTINGS["audio_delay"]
-AUDIO_PAD = SETTINGS["audio_pad"]
 
 VOICES = {}
 
@@ -96,18 +101,6 @@ def get_file_tag(idx):
             break
     return result
 
-
-def get_audio_delays(line: dict) -> tuple[float, float]:
-    audio_delay = SETTINGS["audio_delay"]
-    audio_pad = SETTINGS["audio_pad"]
-    
-    if line["delays"] == "start" or line["delays"] == "no":
-        audio_pad = SETTINGS["audio_pad_min"]
-        
-    if line["delays"] == "end" or line["delays"] == "no":
-        audio_delay = SETTINGS["audio_delay_min"]
-    
-    return (audio_delay, audio_pad)
 
 def rt(frames: float) -> otio.opentime.RationalTime:
     return otio.opentime.RationalTime(frames, FPS)
@@ -227,22 +220,37 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
     filetag = get_file_tag(idx)
     wav_temp_path = root_dir / "audio" / f"audio_{filetag}_temp.wav"
     wav_path = root_dir / "audio" / f"audio_{filetag}.wav"
-    
-    with wave.open(str(wav_temp_path), "w") as wav_file:
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(VOICES[line['character']].config.sample_rate)
-        
-        for audio_bytes in VOICES[line['character']].synthesize(line['text'][-1]):
-            wav_file.writeframes(audio_bytes.audio_int16_bytes)
 
-    subprocess.run([
-        "ffmpeg", "-i", str(wav_temp_path), "-af", 
-        f"rubberband=pitch={char_cfg['voice_pitch']},atempo={char_cfg['voice_tempo']}",
-        str(wav_path)
-    ], capture_output=True)
-    
-    os.remove(str(wav_temp_path))
+    if line["audio"] not in AUDIO_CLASSES:
+        exit(f"[!] Delay Class ({line["audio"]}) Not Found")
+
+    audio_class = AUDIO_CLASSES[line["audio"]]
+
+    if len(line["text"][-1]) > 0:
+        with wave.open(str(wav_temp_path), "w") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(VOICES[line['character']].config.sample_rate)
+            
+            for audio_bytes in VOICES[line['character']].synthesize(line['text'][-1]):
+                wav_file.writeframes(audio_bytes.audio_int16_bytes)
+
+        subprocess.run([
+            "ffmpeg", "-i", str(wav_temp_path), "-af", 
+            f"rubberband=pitch={char_cfg['voice_pitch']},atempo={char_cfg['voice_tempo']}",
+            str(wav_path)
+        ], capture_output=True)
+        
+        os.remove(str(wav_temp_path))
+    else:
+        subprocess.run([
+            "ffmpeg", 
+            "-f", "lavfi",
+            "-i", "anullsrc=r=44100:cl=stereo",
+            "-t", str(audio_class["silence"]),
+            "-c:a", "pcm_s16le",
+            str(wav_path)
+        ], capture_output=True)
 
     # defining duration
     result = subprocess.run([
@@ -252,12 +260,10 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
         str(wav_path),
     ], capture_output=True, text=True)
     
-    
-    audio_delay, audio_pad = get_audio_delays(line)
-    duration_sec = audio_delay + float(result.stdout.strip()) + audio_pad
+    duration_sec = audio_class["before"] + float(result.stdout.strip()) + audio_class["after"]
     duration_frames = duration_sec * FPS
 
-    return wav_path, duration_frames
+    return wav_path, duration_frames, audio_class["before"]
     
 def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
     sprite_path = root_dir / "images" / f"{character}-{tag}-{pos}.png"
@@ -382,7 +388,7 @@ def build_timeline(dtag: str, scenes: list[dict], bg_path: Path, dialog_path: Pa
     tracks.append(v4)
 
     # A1: audio
-    audio_gap_frames = s['delays'][0] * FPS
+    audio_gap_frames = s['audio_delay'] * FPS
     a1 = otio.schema.Track(name="dialogue", kind=otio.schema.TrackKind.Audio)
     for i, s in enumerate(scenes):
         filetag = get_file_tag(i)
@@ -409,19 +415,19 @@ def main():
 
         for idx, line in enumerate(dialogue['lines']):
             char_tag = line['character']
-            delays = get_audio_delays(line)
+
             char_cfg = CHARACTERS[char_tag]
             print(f"  [{idx+1}/{len(dialogue['lines'])}] {char_cfg['name']}: {line['text'][0][:45]}...")
 
             text_png = generate_text_png(root_dir, idx, line)
-            audio_wav, frames = generate_audio(root_dir, idx, line)
+            audio_wav, frames, delay = generate_audio(root_dir, idx, line)
             sprite_png = add_sprite(root_dir, char_tag, tag=line['image'], pos=line['position'])
 
             scenes.append({
                 "character": char_tag,
-                "delays": delays,
                 "text_path": text_png,
                 "audio_path": audio_wav,
+                "audio_delay": delay,
                 "image_path": sprite_png,
                 "frames":    frames,
             })
