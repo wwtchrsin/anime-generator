@@ -153,7 +153,7 @@ def paste_sprite(frame: Image.Image, sprite_path: Path, align: str) -> Image.Ima
     sprite = sprite.resize((target_w, target_h), Image.LANCZOS)
 
     # positioning
-    y = VIDEO_H - target_h + sprite_bottom_offset
+    y = VIDEO_H - target_h - sprite_bottom_offset
     if align == "left":
         x = sprite_side_margin
     else:
