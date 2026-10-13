@@ -1,5 +1,11 @@
 {
 	"video_width": 720,
 	"video_height": 1280,
-	"fps": 24
+	"frame_padding": {
+		"left": 0,
+		"top": 0,
+		"right": 0,
+		"bottom": 0
+	},
+	"fps": 30
 }

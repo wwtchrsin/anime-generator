@@ -82,6 +82,7 @@ if (SCRIPT_DIR / "dialogues.json").exists():
     
 VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
+FRAME_PADDING = SETTINGS["frame_padding"]
 VIDEO_AR = VIDEO_W / VIDEO_H
 
 VOICES = {}
@@ -145,19 +146,21 @@ def paste_sprite(frame: Image.Image, sprite_path: Path, align: str) -> Image.Ima
         sprite = Image.open(sprite_path).convert("RGBA")
 
     # scaling
-    sprite_side_margin = int(SPRITE["side_margin"] * VIDEO_W)
-    sprite_bottom_offset = int(SPRITE["bottom_offset"] * VIDEO_H)
-    target_h = int(VIDEO_H * SPRITE["max_height"])
+    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
+    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
+    sprite_side_margin = int(SPRITE["side_margin"] * area_width)
+    sprite_bottom_offset = int(SPRITE["bottom_offset"] * area_height)
+    target_h = int(area_height * SPRITE["max_height"])
     ratio = target_h / sprite.height
     target_w = int(sprite.width * ratio)
     sprite = sprite.resize((target_w, target_h), Image.LANCZOS)
 
     # positioning
-    y = VIDEO_H - target_h - sprite_bottom_offset
+    y = VIDEO_H - target_h - sprite_bottom_offset - FRAME_PADDING["bottom"]
     if align == "left":
-        x = sprite_side_margin
+        x = FRAME_PADDING["left"] + sprite_side_margin
     else:
-        x = VIDEO_W - target_w - sprite_side_margin
+        x = VIDEO_W - target_w - sprite_side_margin - FRAME_PADDING["right"]
 
     frame.paste(sprite, (x, y), sprite)
     return frame
@@ -188,19 +191,21 @@ def auto_wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> str:
 
 def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Image:
     char_cfg = CHARACTERS[character]
-    short_side = min(VIDEO_W, VIDEO_H)
+    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
+    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
+    short_side = min(area_width, area_height)
     
     dialog_margin = int(DIALOG_BOX["margin"] * short_side)
     dialog_padding = int(DIALOG_BOX["padding"] * short_side)
-    dialog_height = int(DIALOG_BOX["height"] * VIDEO_H)
+    dialog_height = int(DIALOG_BOX["height"] * area_height)
     dialog_border_width = int(round(DIALOG_BOX["border_width"] * short_side))
     dialog_name_size = int(round(DIALOG_BOX["name_size"] * short_side))
     dialog_text_size = int(round(DIALOG_BOX["text_size"] * short_side))
     
-    max_text_width = VIDEO_W - dialog_margin * 2 - dialog_padding * 2
-    box_x = dialog_margin
-    box_y = VIDEO_H - dialog_height - dialog_margin
-    box_w = VIDEO_W - dialog_margin * 2
+    max_text_width = area_width - dialog_margin * 2 - dialog_padding * 2
+    box_x = dialog_margin + FRAME_PADDING["left"]
+    box_y = VIDEO_H - dialog_height - dialog_margin - FRAME_PADDING["bottom"]
+    box_w = area_width - dialog_margin * 2
     box_h = dialog_height
 
     # creating background

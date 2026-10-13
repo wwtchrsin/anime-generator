@@ -82,6 +82,7 @@ if (SCRIPT_DIR / "dialogues.json").exists():
 
 VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
+FRAME_PADDING = SETTINGS["frame_padding"]
 VIDEO_AR = VIDEO_W / VIDEO_H
 FPS = SETTINGS["fps"]
 
@@ -139,15 +140,19 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
 def generate_dialogbox_png(root_dir: Path) -> Path:
     img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
-    short_side = min(VIDEO_W, VIDEO_H)
+
+    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
+    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
+    short_side = min(area_width, area_height)
     dialog_margin = int(DIALOG_BOX["margin"] * short_side)
-    dialog_height = int(DIALOG_BOX["height"] * VIDEO_H)
+    dialog_height = int(DIALOG_BOX["height"] * area_height)
     dialog_border_width = int(round(DIALOG_BOX["border_width"] * short_side))
     
     draw.rounded_rectangle(
-        [dialog_margin, VIDEO_H - dialog_height - dialog_margin,
-         VIDEO_W - dialog_margin, VIDEO_H - dialog_margin],
+        [dialog_margin + FRAME_PADDING["left"], 
+         VIDEO_H - dialog_height - dialog_margin - FRAME_PADDING["bottom"],
+         VIDEO_W - dialog_margin - FRAME_PADDING["right"], 
+         VIDEO_H - dialog_margin - FRAME_PADDING["bottom"]],
         radius=12,
         fill=tuple(DIALOG_BOX["bg_color"]),
         outline=tuple(DIALOG_BOX["border_color"]),
@@ -182,15 +187,17 @@ def auto_wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> str:
 
 def generate_text_png(root_dir: Path, idx: int, line: dict) -> Path:
     char_cfg = CHARACTERS[line['character']]
-    short_side = min(VIDEO_W, VIDEO_H)
+    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
+    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
+    short_side = min(area_width, area_height)
     
     dialog_margin = int(DIALOG_BOX["margin"] * short_side)
     dialog_padding = int(DIALOG_BOX["padding"] * short_side)
-    dialog_height = int(DIALOG_BOX["height"] * VIDEO_H)
+    dialog_height = int(DIALOG_BOX["height"] * area_height)
     dialog_name_size = int(round(DIALOG_BOX["name_size"] * short_side))
     dialog_text_size = int(round(DIALOG_BOX["text_size"] * short_side))
     
-    max_text_width = VIDEO_W - dialog_margin * 2 - dialog_padding * 2
+    max_text_width = area_width - dialog_margin * 2 - dialog_padding * 2
 
     img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -198,8 +205,8 @@ def generate_text_png(root_dir: Path, idx: int, line: dict) -> Path:
     font_name = load_font(dialog_name_size)
     font_text = load_font(dialog_text_size)
 
-    px = dialog_margin + dialog_padding
-    py = VIDEO_H - dialog_height - dialog_margin + dialog_padding
+    px = dialog_margin + dialog_padding + FRAME_PADDING["left"]
+    py = VIDEO_H - dialog_height - dialog_margin + dialog_padding - FRAME_PADDING["bottom"]
 
     # character name
     draw.text((px, py), char_cfg['name'], font=font_name, fill=tuple(char_cfg["name_color"]))
@@ -276,25 +283,27 @@ def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
         sprite_src = DEFAULT_CHARACTER_SPRITE_DIR / character / f"{tag}.png"
     if not sprite_src.exists():
         exit(f"[!] Error: Sprite {character}/{tag} Not Found")
-    
+
+    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
+    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
     img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
     
     sprite_image = Image.open(sprite_src).convert("RGBA")
     
-    sprite_side_margin = int(SPRITE["side_margin"] * VIDEO_W)
-    sprite_bottom_offset = int(SPRITE["bottom_offset"] * VIDEO_H)
-    target_h = int(VIDEO_H * SPRITE["max_height"])
+    sprite_side_margin = int(SPRITE["side_margin"] * area_width)
+    sprite_bottom_offset = int(SPRITE["bottom_offset"] * area_height)
+    target_h = int(area_height * SPRITE["max_height"])
     ratio = target_h / sprite_image.height
     target_w = int(sprite_image.width * ratio)
     sprite_image = sprite_image.resize((target_w, target_h), Image.LANCZOS)
     
-    y = VIDEO_H - target_h - sprite_bottom_offset
+    y = VIDEO_H - target_h - sprite_bottom_offset - FRAME_PADDING["bottom"]
     if pos == "left":
-        x = sprite_side_margin
+        x = sprite_side_margin + FRAME_PADDING["left"]
     elif pos == "right":
-        x = VIDEO_W - target_w - sprite_side_margin
+        x = VIDEO_W - target_w - sprite_side_margin - FRAME_PADDING["right"]
     else:
-        x = int((VIDEO_W - target_w) * 0.5)
+        x = int((VIDEO_W - target_w - FRAME_PADDING["left"]) * 0.5) + FRAME_PADDING["left"]
         
     img.paste(sprite_image, (x, y), sprite_image)
     img.save(str(sprite_path))
