@@ -7,5 +7,6 @@
     "border_width": 0.00275,
     "text_color": [255, 255, 255],
     "name_size": 0.05,
-    "text_size": 0.05
+    "text_size": 0.05,
+    "font_type": "regular"
 }
