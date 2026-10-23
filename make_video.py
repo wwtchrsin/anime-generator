@@ -83,6 +83,8 @@ if (SCRIPT_DIR / "dialogues.json").exists():
 VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
 FRAME_PADDING = SETTINGS["frame_padding"]
+DIALOG_PADDING = DIALOG_BOX["padding"]
+DIALOG_MARGIN = DIALOG_BOX["margin"]
 VIDEO_AR = VIDEO_W / VIDEO_H
 
 VOICES = {}
@@ -200,18 +202,26 @@ def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Imag
     area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
     area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
     short_side = min(area_width, area_height)
-    
-    dialog_margin = int(DIALOG_BOX["margin"] * short_side)
-    dialog_padding = int(DIALOG_BOX["padding"] * short_side)
+
+    dialog_margin_left = int(DIALOG_MARGIN["left"] * short_side)
+    dialog_margin_top = int(DIALOG_MARGIN["top"] * short_side)
+    dialog_margin_right = int(DIALOG_MARGIN["right"] * short_side)
+    dialog_margin_bottom = int(DIALOG_MARGIN["bottom"] * short_side)
+    dialog_padding_left = int(DIALOG_PADDING["left"] * short_side)
+    dialog_padding_top = int(DIALOG_PADDING["top"] * short_side)
+    dialog_padding_right = int(DIALOG_PADDING["right"] * short_side)
+    dialog_padding_bottom = int(DIALOG_PADDING["bottom"] * short_side)
+
     dialog_height = int(DIALOG_BOX["height"] * area_height)
     dialog_border_width = int(round(DIALOG_BOX["border_width"] * short_side))
     dialog_name_size = int(round(DIALOG_BOX["name_size"] * short_side))
     dialog_text_size = int(round(DIALOG_BOX["text_size"] * short_side))
     
-    max_text_width = area_width - dialog_margin * 2 - dialog_padding * 2
-    box_x = dialog_margin + FRAME_PADDING["left"]
-    box_y = VIDEO_H - dialog_height - dialog_margin - FRAME_PADDING["bottom"]
-    box_w = area_width - dialog_margin * 2
+    max_text_width = (area_width - dialog_margin_left - dialog_margin_right - 
+                      dialog_padding_left - dialog_padding_right)
+    box_x = dialog_margin_left + FRAME_PADDING["left"]
+    box_y = VIDEO_H - dialog_height - dialog_margin_bottom - FRAME_PADDING["bottom"]
+    box_w = area_width - dialog_margin_left - dialog_margin_right
     box_h = dialog_height
 
     # creating background
@@ -230,8 +240,8 @@ def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Imag
     font_name = load_font(dialog_name_size)
     font_text = load_font(dialog_text_size)
 
-    px = box_x + dialog_padding
-    py = box_y + dialog_padding
+    px = box_x + dialog_padding_left
+    py = box_y + dialog_padding_top
 
     # character name
     draw.text((px, py), char_cfg["name"], font=font_name, fill=tuple(char_cfg["name_color"]))

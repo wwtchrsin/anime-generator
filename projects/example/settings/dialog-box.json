@@ -1,7 +1,17 @@
 {
     "height": 0.25,
-    "margin": 0.05,
-    "padding": 0.035,
+    "margin": {
+        "left": 0.05,
+        "top": 0.05,
+        "right": 0.05,
+        "bottom": 0.05
+    },
+    "padding": {
+        "left": 0.035,
+        "top": 0.035,
+        "right": 0.035,
+        "bottom": 0.035
+    },
     "bg_color": [10, 10, 30, 200],
     "border_color": [180, 180, 255, 220],
     "border_width": 0.00275,

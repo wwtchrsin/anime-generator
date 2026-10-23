@@ -83,6 +83,8 @@ if (SCRIPT_DIR / "dialogues.json").exists():
 VIDEO_W = SETTINGS["video_width"]
 VIDEO_H = SETTINGS["video_height"]
 FRAME_PADDING = SETTINGS["frame_padding"]
+DIALOG_PADDING = DIALOG_BOX["padding"]
+DIALOG_MARGIN = DIALOG_BOX["margin"]
 VIDEO_AR = VIDEO_W / VIDEO_H
 FPS = SETTINGS["fps"]
 
@@ -150,15 +152,20 @@ def generate_dialogbox_png(root_dir: Path) -> Path:
     area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
     area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
     short_side = min(area_width, area_height)
-    dialog_margin = int(DIALOG_BOX["margin"] * short_side)
+
+    dialog_margin_left = int(DIALOG_MARGIN["left"] * short_side)
+    dialog_margin_top = int(DIALOG_MARGIN["top"] * short_side)
+    dialog_margin_right = int(DIALOG_MARGIN["right"] * short_side)
+    dialog_margin_bottom = int(DIALOG_MARGIN["bottom"] * short_side)
+
     dialog_height = int(DIALOG_BOX["height"] * area_height)
     dialog_border_width = int(round(DIALOG_BOX["border_width"] * short_side))
     
     draw.rounded_rectangle(
-        [dialog_margin + FRAME_PADDING["left"], 
-         VIDEO_H - dialog_height - dialog_margin - FRAME_PADDING["bottom"],
-         VIDEO_W - dialog_margin - FRAME_PADDING["right"], 
-         VIDEO_H - dialog_margin - FRAME_PADDING["bottom"]],
+        [dialog_margin_left + FRAME_PADDING["left"], 
+         VIDEO_H - dialog_height - dialog_margin_bottom - FRAME_PADDING["bottom"],
+         VIDEO_W - dialog_margin_right - FRAME_PADDING["right"], 
+         VIDEO_H - dialog_margin_bottom - FRAME_PADDING["bottom"]],
         radius=12,
         fill=tuple(DIALOG_BOX["bg_color"]),
         outline=tuple(DIALOG_BOX["border_color"]),
@@ -196,14 +203,22 @@ def generate_text_png(root_dir: Path, idx: int, line: dict) -> Path:
     area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
     area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
     short_side = min(area_width, area_height)
+
+    dialog_margin_left = int(DIALOG_MARGIN["left"] * short_side)
+    dialog_margin_top = int(DIALOG_MARGIN["top"] * short_side)
+    dialog_margin_right = int(DIALOG_MARGIN["right"] * short_side)
+    dialog_margin_bottom = int(DIALOG_MARGIN["bottom"] * short_side)
+    dialog_padding_left = int(DIALOG_PADDING["left"] * short_side)
+    dialog_padding_top = int(DIALOG_PADDING["top"] * short_side)
+    dialog_padding_right = int(DIALOG_PADDING["right"] * short_side)
+    dialog_padding_bottom = int(DIALOG_PADDING["bottom"] * short_side)
     
-    dialog_margin = int(DIALOG_BOX["margin"] * short_side)
-    dialog_padding = int(DIALOG_BOX["padding"] * short_side)
     dialog_height = int(DIALOG_BOX["height"] * area_height)
     dialog_name_size = int(round(DIALOG_BOX["name_size"] * short_side))
     dialog_text_size = int(round(DIALOG_BOX["text_size"] * short_side))
     
-    max_text_width = area_width - dialog_margin * 2 - dialog_padding * 2
+    max_text_width = (area_width - dialog_margin_left - dialog_margin_right 
+                      - dialog_padding_left - dialog_padding_right)
 
     img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -211,8 +226,8 @@ def generate_text_png(root_dir: Path, idx: int, line: dict) -> Path:
     font_name = load_font(dialog_name_size)
     font_text = load_font(dialog_text_size)
 
-    px = dialog_margin + dialog_padding + FRAME_PADDING["left"]
-    py = VIDEO_H - dialog_height - dialog_margin + dialog_padding - FRAME_PADDING["bottom"]
+    px = dialog_margin_left + dialog_padding_left + FRAME_PADDING["left"]
+    py = VIDEO_H - dialog_height - dialog_margin_bottom + dialog_padding_top - FRAME_PADDING["bottom"]
 
     # character name
     draw.text((px, py), char_cfg['name'], font=font_name, fill=tuple(char_cfg["name_color"]))
