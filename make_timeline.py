@@ -237,9 +237,10 @@ def build_timeline(dtag: str, scenes: list[dict], bg_path: Path, dialog_path: Pa
     tracks.append(v4)
 
     # A1: audio
-    audio_gap_frames = s['audio_delay'] * FPS
+    
     a1 = otio.schema.Track(name="dialogue", kind=otio.schema.TrackKind.Audio)
     for i, s in enumerate(scenes):
+        audio_gap_frames = s['audio_delay'] * FPS
         filetag = get_file_tag(i)
         a1.append(make_gap(audio_gap_frames))
         a1.append(make_clip(f"audio_{filetag}", s["audio_path"], s["frames"] - audio_gap_frames))
