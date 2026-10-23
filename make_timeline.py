@@ -11,6 +11,7 @@ import wave
 import json
 import string
 import sys
+import ag_utils
 
 PROJECT_NAME = "example"
 
@@ -104,7 +105,6 @@ def get_file_tag(idx):
             break
     return result
 
-
 def rt(frames: float) -> otio.opentime.RationalTime:
     return otio.opentime.RationalTime(frames, FPS)
 
@@ -126,127 +126,26 @@ def make_clip(name: str, path: Path, duration_frames: float,
 def make_gap(duration_frames: float) -> otio.schema.Gap:
     return otio.schema.Gap(source_range=tr(0, duration_frames))
 
-def load_font(size: int) -> ImageFont.FreeTypeFont:
-    if DIALOG_BOX["font_type"] == "chinese":
-        candidates = [
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
-        ]
-    else: 
-        candidates = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-        ]
-    for p in candidates:
-        if Path(p).exists():
-            return ImageFont.truetype(p, size)
-    return ImageFont.load_default()
-
-
-
 def generate_dialogbox_png(root_dir: Path) -> Path:
-    img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
-    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
-    short_side = min(area_width, area_height)
-
-    dialog_margin_left = int(DIALOG_MARGIN["left"] * short_side)
-    dialog_margin_top = int(DIALOG_MARGIN["top"] * short_side)
-    dialog_margin_right = int(DIALOG_MARGIN["right"] * short_side)
-    dialog_margin_bottom = int(DIALOG_MARGIN["bottom"] * short_side)
-
-    dialog_height = int(DIALOG_BOX["height"] * area_height)
-    dialog_border_width = int(round(DIALOG_BOX["border_width"] * short_side))
-    
-    draw.rounded_rectangle(
-        [dialog_margin_left + FRAME_PADDING["left"], 
-         VIDEO_H - dialog_height - dialog_margin_bottom - FRAME_PADDING["bottom"],
-         VIDEO_W - dialog_margin_right - FRAME_PADDING["right"], 
-         VIDEO_H - dialog_margin_bottom - FRAME_PADDING["bottom"]],
-        radius=12,
-        fill=tuple(DIALOG_BOX["bg_color"]),
-        outline=tuple(DIALOG_BOX["border_color"]),
-        width=dialog_border_width,
-    )
+    img = ag_utils.generate_dialogbox_img(settings=SETTINGS, dialog_options=DIALOG_BOX)
     path = root_dir / "images" / "dialogbox.png"
     img.save(str(path))
     return path
-    
-
-def auto_wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> str:
-    words = text.split()
-    lines = []
-    curr_line = ""
-    
-    for word in words:
-        upd_line = f"{curr_line} {word}".strip()
-        bbox = font.getbbox(upd_line)
-        width = bbox[2] - bbox[0]
-        
-        if width < max_width:
-            curr_line = upd_line
-        else:
-            if curr_line:
-                lines.append(curr_line)
-            curr_line = word
-        
-    if curr_line:
-        lines.append(curr_line)
-    
-    return "\n".join(lines)
 
 def generate_text_png(root_dir: Path, idx: int, line: dict) -> Path:
     char_cfg = CHARACTERS[line['character']]
-    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
-    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
-    short_side = min(area_width, area_height)
-
-    dialog_margin_left = int(DIALOG_MARGIN["left"] * short_side)
-    dialog_margin_top = int(DIALOG_MARGIN["top"] * short_side)
-    dialog_margin_right = int(DIALOG_MARGIN["right"] * short_side)
-    dialog_margin_bottom = int(DIALOG_MARGIN["bottom"] * short_side)
-    dialog_padding_left = int(DIALOG_PADDING["left"] * short_side)
-    dialog_padding_top = int(DIALOG_PADDING["top"] * short_side)
-    dialog_padding_right = int(DIALOG_PADDING["right"] * short_side)
-    dialog_padding_bottom = int(DIALOG_PADDING["bottom"] * short_side)
-    
-    dialog_height = int(DIALOG_BOX["height"] * area_height)
-    dialog_name_size = int(round(DIALOG_BOX["name_size"] * short_side))
-    dialog_text_size = int(round(DIALOG_BOX["text_size"] * short_side))
-    
-    max_text_width = (area_width - dialog_margin_left - dialog_margin_right 
-                      - dialog_padding_left - dialog_padding_right)
-
-    img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    font_name = load_font(dialog_name_size)
-    font_text = load_font(dialog_text_size)
-
-    px = dialog_margin_left + dialog_padding_left + FRAME_PADDING["left"]
-    py = VIDEO_H - dialog_height - dialog_margin_bottom + dialog_padding_top - FRAME_PADDING["bottom"]
-
-    # character name
-    draw.text((px, py), char_cfg['name'], font=font_name, fill=tuple(char_cfg["name_color"]))
-    py += dialog_name_size + 8
-
-    # character line
-    wrapped = auto_wrap(line['text'][0], font_text, max_text_width)
-    draw.text((px, py), wrapped, font=font_text, fill=tuple(DIALOG_BOX["text_color"]))
+    img = ag_utils.generate_text_img(character=char_cfg, text=line["text"][0],
+                                     settings=SETTINGS,
+                                     dialog_options=DIALOG_BOX)
 
     filetag =  get_file_tag(idx)
     path = root_dir / "images" / f"text_{filetag}_{line['character']}.png"
     img.save(str(path))
     return path
 
-
-def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
+def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float, float]:
     char_cfg = CHARACTERS[line['character']]
     filetag = get_file_tag(idx)
-    wav_temp_path = root_dir / "audio" / f"audio_{filetag}_temp.wav"
     wav_path = root_dir / "audio" / f"audio_{filetag}.wav"
 
     if line["audio"] not in AUDIO_CLASSES:
@@ -254,46 +153,16 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
 
     audio_class = AUDIO_CLASSES[line["audio"]]
 
-    if len(line["text"][-1]) > 0:
-        with wave.open(str(wav_temp_path), "w") as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(VOICES[line['character']].config.sample_rate)
-            
-            for audio_bytes in VOICES[line['character']].synthesize(line['text'][-1]):
-                wav_file.writeframes(audio_bytes.audio_int16_bytes)
-
-        subprocess.run([
-            "ffmpeg", "-i", str(wav_temp_path), "-af", 
-            f"rubberband=pitch={char_cfg['voice_pitch']},atempo={char_cfg['voice_tempo']}",
-            "-ac", "2",
-            str(wav_path)
-        ], capture_output=True)
-        
-        os.remove(str(wav_temp_path))
-    else:
-        subprocess.run([
-            "ffmpeg", 
-            "-f", "lavfi",
-            "-i", f"anullsrc=r={VOICES[line['character']].config.sample_rate}:cl=stereo",
-            "-t", str(audio_class["silence"]),
-            "-c:a", "pcm_s16le",
-            str(wav_path)
-        ], capture_output=True)
-
-    # defining duration
-    result = subprocess.run([
-        "ffprobe", "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        str(wav_path),
-    ], capture_output=True, text=True)
+    duration = ag_utils.generate_audio(character=char_cfg, text=line["text"][-1], 
+                                       voice=VOICES[line['character']],
+                                       silence_duration=audio_class['silence'],
+                                       out_path=wav_path)
     
-    duration_sec = audio_class["before"] + float(result.stdout.strip()) + audio_class["after"]
-    duration_frames = duration_sec * FPS
+    total_duration = audio_class["before"] + duration + audio_class["after"]
+    duration_frames = total_duration * FPS
 
     return wav_path, duration_frames, audio_class["before"]
-    
+
 def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
     sprite_path = root_dir / "images" / f"{character}-{tag}-{pos}.png"
     
@@ -306,32 +175,13 @@ def add_sprite(root_dir: Path, character: str, tag: str, pos: str) -> Path:
     if not sprite_src.exists():
         exit(f"[!] Error: Sprite {character}/{tag} Not Found")
 
-    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
-    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
-    img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
-    
-    sprite_image = Image.open(sprite_src).convert("RGBA")
-    
-    sprite_side_margin = int(SPRITE["side_margin"] * area_width)
-    sprite_bottom_offset = int(SPRITE["bottom_offset"] * area_height)
-    target_h = int(area_height * SPRITE["max_height"])
-    ratio = target_h / sprite_image.height
-    target_w = int(sprite_image.width * ratio)
-    sprite_image = sprite_image.resize((target_w, target_h), Image.LANCZOS)
-    
-    y = VIDEO_H - target_h - sprite_bottom_offset - FRAME_PADDING["bottom"]
-    if pos == "left":
-        x = sprite_side_margin + FRAME_PADDING["left"]
-    elif pos == "right":
-        x = VIDEO_W - target_w - sprite_side_margin - FRAME_PADDING["right"]
-    else:
-        x = int((VIDEO_W - target_w - FRAME_PADDING["left"]) * 0.5) + FRAME_PADDING["left"]
-        
-    img.paste(sprite_image, (x, y), sprite_image)
+    img = ag_utils.generate_sprite(sprite_src=sprite_src, pos=pos, 
+                                   settings=SETTINGS, 
+                                   sprite_options=SPRITE)
+
     img.save(str(sprite_path))
-    
     return sprite_path
-    
+
 def make_background(root_dir: Path, bgTag: str) -> Path:
     bg_name = f"{bgTag}.png"
     bg_src = BACKGROUND_DIR / bg_name
@@ -340,44 +190,12 @@ def make_background(root_dir: Path, bgTag: str) -> Path:
     if not bg_src.exists():
         exit("[!] Error: Background Not Found")
         
-    print(bg_src)
     bg_path = root_dir / "images" / f"background-{bgTag}.png"
     
-    if bg_src.exists():
-        img = Image.open(bg_src).convert("RGBA")
-    else:
-        # fallback
-        img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (30, 30, 60, 255))
-        draw = ImageDraw.Draw(img)
-        for y in range(VIDEO_H):
-            r = int(20 + y / VIDEO_H * 30)
-            g = int(20 + y / VIDEO_H * 20)
-            b = int(50 + y / VIDEO_H * 60)
-            draw.line([(0, y), (VIDEO_W, y)], fill=(r, g, b, 255))
-    
-    image_ar = img.width / img.height
-    if image_ar > VIDEO_AR:
-        temp_height = img.height
-        temp_width = img.height * VIDEO_AR
-        left = (img.width - temp_width) // 2
-        top = 0
-        right = temp_width + left
-        bottom = temp_height
-    else:
-        temp_width = img.width
-        temp_height = img.width / VIDEO_AR
-        left = 0
-        top = (img.height - temp_height) // 2
-        right = temp_width
-        bottom = temp_height + top
-        
-    cropped_img = img.crop((left, top, right, bottom))
-    resized_img = cropped_img.resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
-    resized_img.save(str(bg_path))
-    
+    img = ag_utils.generate_background(bg_src=bg_src, settings=SETTINGS)
+    img.save(str(bg_path))
     return bg_path
     
-      
 def build_timeline(dtag: str, scenes: list[dict], bg_path: Path, dialog_path: Path) -> otio.schema.Timeline:
     """
     Tracks
@@ -438,7 +256,7 @@ def main():
         os.mkdir(root_dir)
         os.mkdir(root_dir / "images")
         os.mkdir(root_dir / "audio")
-        
+
         bg_path = make_background(root_dir, dialogue['background'])
         dialog_path = generate_dialogbox_png(root_dir)
         

@@ -12,6 +12,7 @@ import time
 import uuid
 import json
 import sys
+import ag_utils
 
 PROJECT_NAME = "example"
 
@@ -93,166 +94,24 @@ for charTag in CHARACTERS:
     voiceTag = CHARACTERS[charTag]["voice"]
     VOICES[charTag] = PiperVoice.load(f"piper-voices/{voiceTag}.onnx")
 
-def load_font(size: int) -> ImageFont.FreeTypeFont:
-    if DIALOG_BOX["font_type"] == "chinese":
-        candidates = [
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
-        ]
-    else: 
-        candidates = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-        ]
-    for path in candidates:
-        if Path(path).exists():
-            return ImageFont.truetype(path, size)
-    return ImageFont.load_default()
-
-
 def make_background(bg_path: Path) -> Image.Image:
-    if bg_path.exists():
-        img = Image.open(bg_path).convert("RGBA")
-    else:
-        # fallback
-        img = Image.new("RGBA", (VIDEO_W, VIDEO_H), (30, 30, 60, 255))
-        draw = ImageDraw.Draw(img)
-        for y in range(VIDEO_H):
-            r = int(20 + y / VIDEO_H * 30)
-            g = int(20 + y / VIDEO_H * 20)
-            b = int(50 + y / VIDEO_H * 60)
-            draw.line([(0, y), (VIDEO_W, y)], fill=(r, g, b, 255))
-    
-    image_ar = img.width / img.height
-    if image_ar > VIDEO_AR:
-        temp_height = img.height
-        temp_width = img.height * VIDEO_AR
-        left = (img.width - temp_width) // 2
-        top = 0
-        right = temp_width + left
-        bottom = temp_height
-    else:
-        temp_width = img.width
-        temp_height = img.width / VIDEO_AR
-        left = 0
-        top = (img.height - temp_height) // 2
-        right = temp_width
-        bottom = temp_height + top
-        
-    cropped_img = img.crop((left, top, right, bottom))
-    return cropped_img.resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
-
+    return ag_utils.generate_background(bg_src=bg_path, settings=SETTINGS)
 
 def paste_sprite(frame: Image.Image, sprite_path: Path, align: str) -> Image.Image:
-    if not sprite_path.exists():
-        # fallback
-        sprite = Image.new("RGBA", (200, 400), (200, 150, 150, 180))
-        draw = ImageDraw.Draw(sprite)
-        draw.rectangle([0, 0, 199, 399], outline=(255, 200, 200), width=3)
-    else:
-        sprite = Image.open(sprite_path).convert("RGBA")
-
-    # scaling
-    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
-    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
-    sprite_side_margin = int(SPRITE["side_margin"] * area_width)
-    sprite_bottom_offset = int(SPRITE["bottom_offset"] * area_height)
-    target_h = int(area_height * SPRITE["max_height"])
-    ratio = target_h / sprite.height
-    target_w = int(sprite.width * ratio)
-    sprite = sprite.resize((target_w, target_h), Image.LANCZOS)
-
-    # positioning
-    y = VIDEO_H - target_h - sprite_bottom_offset - FRAME_PADDING["bottom"]
-    if align == "left":
-        x = FRAME_PADDING["left"] + sprite_side_margin
-    else:
-        x = VIDEO_W - target_w - sprite_side_margin - FRAME_PADDING["right"]
-
-    frame.paste(sprite, (x, y), sprite)
+    sprite = ag_utils.generate_sprite(sprite_src=sprite_path, pos=align,
+                                      settings=SETTINGS,
+                                      sprite_options=SPRITE)
+    frame = Image.alpha_composite(frame, sprite)
     return frame
-
-
-def auto_wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> str:
-    words = text.split()
-    lines = []
-    curr_line = ""
-    
-    for word in words:
-        upd_line = f"{curr_line} {word}".strip()
-        bbox = font.getbbox(upd_line)
-        width = bbox[2] - bbox[0]
-        
-        if width < max_width:
-            curr_line = upd_line
-        else:
-            if curr_line:
-                lines.append(curr_line)
-            curr_line = word
-        
-    if curr_line:
-        lines.append(curr_line)
-    
-    return "\n".join(lines)
-
 
 def draw_dialog_box(frame: Image.Image, character: str, text: str) -> Image.Image:
     char_cfg = CHARACTERS[character]
-    area_width = VIDEO_W - FRAME_PADDING["left"] - FRAME_PADDING["right"]
-    area_height = VIDEO_H - FRAME_PADDING["top"] - FRAME_PADDING["bottom"]
-    short_side = min(area_width, area_height)
-
-    dialog_margin_left = int(DIALOG_MARGIN["left"] * short_side)
-    dialog_margin_top = int(DIALOG_MARGIN["top"] * short_side)
-    dialog_margin_right = int(DIALOG_MARGIN["right"] * short_side)
-    dialog_margin_bottom = int(DIALOG_MARGIN["bottom"] * short_side)
-    dialog_padding_left = int(DIALOG_PADDING["left"] * short_side)
-    dialog_padding_top = int(DIALOG_PADDING["top"] * short_side)
-    dialog_padding_right = int(DIALOG_PADDING["right"] * short_side)
-    dialog_padding_bottom = int(DIALOG_PADDING["bottom"] * short_side)
-
-    dialog_height = int(DIALOG_BOX["height"] * area_height)
-    dialog_border_width = int(round(DIALOG_BOX["border_width"] * short_side))
-    dialog_name_size = int(round(DIALOG_BOX["name_size"] * short_side))
-    dialog_text_size = int(round(DIALOG_BOX["text_size"] * short_side))
-    
-    max_text_width = (area_width - dialog_margin_left - dialog_margin_right - 
-                      dialog_padding_left - dialog_padding_right)
-    box_x = dialog_margin_left + FRAME_PADDING["left"]
-    box_y = VIDEO_H - dialog_height - dialog_margin_bottom - FRAME_PADDING["bottom"]
-    box_w = area_width - dialog_margin_left - dialog_margin_right
-    box_h = dialog_height
-
-    # creating background
-    overlay = Image.new("RGBA", (VIDEO_W, VIDEO_H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    draw.rounded_rectangle(
-        [box_x, box_y, box_x + box_w, box_y + box_h],
-        radius=12,
-        fill=tuple(DIALOG_BOX["bg_color"]),
-        outline=tuple(DIALOG_BOX["border_color"]),
-        width=dialog_border_width,
-    )
-    frame = Image.alpha_composite(frame, overlay)
-    
-    draw = ImageDraw.Draw(frame)
-    font_name = load_font(dialog_name_size)
-    font_text = load_font(dialog_text_size)
-
-    px = box_x + dialog_padding_left
-    py = box_y + dialog_padding_top
-
-    # character name
-    draw.text((px, py), char_cfg["name"], font=font_name, fill=tuple(char_cfg["name_color"]))
-    py += dialog_name_size + 8
-
-    # line text
-    wrapped = auto_wrap(text, font_text, max_text_width)
-    draw.text((px, py), wrapped, font=font_text, fill=tuple(DIALOG_BOX["text_color"]))
-
+    dialog_img = ag_utils.generate_dialogbox_img(settings=SETTINGS, dialog_options=DIALOG_BOX)
+    text_img = ag_utils.generate_text_img(character=char_cfg, text=text,
+                                          settings=SETTINGS, dialog_options=DIALOG_BOX)
+    frame = Image.alpha_composite(frame, dialog_img)
+    frame = Image.alpha_composite(frame, text_img)
     return frame
-
 
 def generate_audio(line: dict, out_path: Path) -> float:
     char_cfg = CHARACTERS[line['character']]
@@ -261,47 +120,12 @@ def generate_audio(line: dict, out_path: Path) -> float:
         exit(f"[!] Delay Class ({line["audio"]}) Not Found")
 
     audio_class = AUDIO_CLASSES[line["audio"]]
-
-    if len(line["text"][-1]) > 0:
-        timestamp = int(time.time() * 1000)
-        temp_path = OUTPUT_DIR / f"{timestamp}_{uuid.uuid4().hex[:8]}.wav"
-        
-        with wave.open(str(temp_path), "w") as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(VOICES[line['character']].config.sample_rate)
-            
-            for audio_bytes in VOICES[line['character']].synthesize(line['text'][-1]):
-                wav_file.writeframes(audio_bytes.audio_int16_bytes)
-        
-        subprocess.run([
-            "ffmpeg", "-i", str(temp_path), "-af", 
-            f"rubberband=pitch={char_cfg['voice_pitch']},atempo={char_cfg['voice_tempo']}",
-            "-ac", "2",
-            str(out_path)
-        ], capture_output=True)
-        
-        os.remove(str(temp_path))
-    else:
-        subprocess.run([
-            "ffmpeg", 
-            "-f", "lavfi",
-            "-i", f"anullsrc=r={VOICES[line['character']].config.sample_rate}:cl=mono",
-            "-t", str(audio_class["silence"]),
-            "-c:a", "pcm_s16le",
-            str(out_path)
-        ], capture_output=True)
+    duration = ag_utils.generate_audio(character=char_cfg, text=line["text"][-1],
+                                       voice=VOICES[line["character"]],
+                                       silence_duration=audio_class["silence"],
+                                       out_path=out_path)
     
-    # defining duration
-    result = subprocess.run([
-        "ffprobe", "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        str(out_path),
-    ], capture_output=True, text=True)
-    
-    return audio_class["before"] + float(result.stdout.strip()) + audio_class["after"]
-
+    return audio_class["before"] + duration + audio_class["after"]
 
 def make_frame(line: dict, bg: Image.Image) -> Image.Image:
     frame = bg.copy()
@@ -315,7 +139,6 @@ def make_frame(line: dict, bg: Image.Image) -> Image.Image:
     frame = paste_sprite(frame, image_path, line['position'])
     frame = draw_dialog_box(frame, line['character'], line['text'][0])
     return frame
-
 
 def render_scene(idx: int, line: dict, bg: Image.Image, audio_path: Path, 
                duration: float,
@@ -349,7 +172,6 @@ def render_scene(idx: int, line: dict, bg: Image.Image, audio_path: Path,
 
     frame_path.unlink()
 
-
 def concat_scenes(scene_paths: list[Path], output_path: Path):
     list_file = OUTPUT_DIR / "concat_list.txt"
     with open(list_file, "w") as f:
@@ -366,7 +188,6 @@ def concat_scenes(scene_paths: list[Path], output_path: Path):
     ], check=True, capture_output=True)
 
     list_file.unlink()
-
 
 def main():
     print(f"\n[*] Working on project '{PROJECT_NAME}'...\n")
