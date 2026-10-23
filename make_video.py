@@ -267,6 +267,7 @@ def generate_audio(line: dict, out_path: Path) -> float:
         subprocess.run([
             "ffmpeg", "-i", str(temp_path), "-af", 
             f"rubberband=pitch={char_cfg['voice_pitch']},atempo={char_cfg['voice_tempo']}",
+            "-ac", "2",
             str(out_path)
         ], capture_output=True)
         

@@ -251,6 +251,7 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
         subprocess.run([
             "ffmpeg", "-i", str(wav_temp_path), "-af", 
             f"rubberband=pitch={char_cfg['voice_pitch']},atempo={char_cfg['voice_tempo']}",
+            "-ac", "2",
             str(wav_path)
         ], capture_output=True)
         
@@ -259,7 +260,7 @@ def generate_audio(root_dir: Path, idx: int, line: dict) -> tuple[Path, float]:
         subprocess.run([
             "ffmpeg", 
             "-f", "lavfi",
-            "-i", f"anullsrc=r={VOICES[line['character']].config.sample_rate}:cl=mono",
+            "-i", f"anullsrc=r={VOICES[line['character']].config.sample_rate}:cl=stereo",
             "-t", str(audio_class["silence"]),
             "-c:a", "pcm_s16le",
             str(wav_path)
